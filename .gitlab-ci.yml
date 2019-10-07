@@ -4,6 +4,9 @@ stages:
   - deploy
 
 before_script:
+   - pip install sphinx_autodoc_typehints
+   - pip install sphinx_rtd_theme
+   - pip install sphinx_paramlinks
    - pip install twine
    - python setup.py sdist
 

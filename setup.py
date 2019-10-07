@@ -10,7 +10,7 @@ docs_folder = 'docs'
 
 docs_require = [
     'sphinx',
-    'sphinx-autodoc-typehints',
+    'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',     # since Sphinx 1.4 no longer integrated (like alabaster)
     'sphinx_paramlinks',
     # typehints extension does that already so no need to also include 'sphinx-autodoc-annotation',
