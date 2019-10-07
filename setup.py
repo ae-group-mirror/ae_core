@@ -1,3 +1,4 @@
+""" generic setup.py used for all modules and sub-packages of the ae namespace package. """
 import os
 import re
 import setuptools
@@ -19,7 +20,22 @@ tests_require = [
 ]
 
 
-def read_package_version():             # also used by docs/conf.py (package need to be installed via pip install -e .)
+def replace_placeholders(file_content):
+    """ replace placeholders within the passed file content """
+    return file_content \
+        .replace('{{setup_path}}', setup_path) \
+        .replace('{{package_name}}', package_name) \
+        .replace('{{pip_name}}', pip_name) \
+        .replace('{{import_name}}', import_name) \
+        .replace('{{package_path}}', package_path) \
+        .replace('{{package_version}}', package_version)
+
+
+def read_package_version():
+    """ read version of module/sub-package directly from the module or from the __init__.py of the sub-package.
+
+    also used by docs/conf.py (package need to be installed via pip install -e .)
+    """
     if os.path.exists(package_path + '.py'):
         file_name = package_path + '.py'
     elif os.path.exists(package_path + os.path.sep + '__init__.py'):
@@ -35,10 +51,10 @@ def read_package_version():             # also used by docs/conf.py (package nee
 
 
 def patch_read_me():
+    """ create final README.md from the ae namespace package template. """
     with open("AE_PACKAGES_README.md") as fh:
         file_content = fh.read()
-    file_content = file_content.replace('<{package_name}>', package_name)
-    file_content = file_content.replace('<{package_version}>', package_version)
+    file_content = replace_placeholders(file_content)
     with open("README.md", 'w') as fh:
         fh.write(file_content)
     return file_content
@@ -48,7 +64,7 @@ setup_path = os.path.abspath(os.path.dirname(__file__))
 package_name = os.path.basename(setup_path)             # results in package name e.g. 'ae_core'
 pip_name = package_name.replace(namespace_root + '_', namespace_root + '-')     # e.g. 'ae-core'
 import_name = package_name.replace(namespace_root + '_', namespace_root + '.')  # e.g. 'ae.core'
-package_path = os.path.abspath(package_name.replace(namespace_root + '_', namespace_root + os.path.sep))
+package_path = os.path.join(setup_path, package_name.replace(namespace_root + '_', namespace_root + os.path.sep))
 package_version = read_package_version()
 
 

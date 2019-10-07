@@ -1,4 +1,4 @@
-# Version <{package_version}> Of <{package_name}> Package
+# Version {{package_version}} Of {{package_name}} Package
 
 The modules and sub-packages of the Application Environment for Python are within
 the `ae` namespace and are providing helper methods and classes for to develop
@@ -10,7 +10,7 @@ full-featured applications with Python.
 For to only use this sub-package in your code type in your command shell:
  
 ```shell script
-pip install <{package_name}>
+pip install {{pip_name}}
 ```
 
 If you instead want to contribute to this sub-package then first fork this repository,
@@ -29,4 +29,4 @@ the setup extras key `dev` in the above command with `tests` or `docs` respectiv
 ## Sub-Package Documentation
 
 More info on the features and usage of this sub-package are available at
-[ReadTheDocs](https://<{package_name}>.readthedocs.io "<{package_name}> documentation").
+[ReadTheDocs](https://{{pip_name}}.readthedocs.io "{{package_name}} documentation").

@@ -1,17 +1,22 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# http://www.sphinx-doc.org/en/master/config
+""" Configuration file for the Sphinx documentation builder.
+
+This file only contains a selection of the most common options. For a full
+list see the documentation:
+http://www.sphinx-doc.org/en/master/config
+"""
+import sys
 
 # -- Path setup --------------------------------------------------------------
-
+#
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-import sys
-from ae.setup import package_name, package_version
+
+sys.path.append('..')       # resulting in PEP8 error E402 (with pylint use comment: # pylint: disable=E402)
+# .. and because the next PyCharm inspection suppress comment did not work, now E402 gets ignored in project settings
+# noinspection PyPep8
+from setup import import_name, package_name, package_version
+
 
 # -- Project information -----------------------------------------------------
 
@@ -30,10 +35,11 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',  # include package module source code
     'sphinx.ext.intersphinx',
-    # typehints extension does that already so no need to also include 'sphinx_autodoc_annotation',
-    'sphinx_autodoc_typehints',
     # 'sphinx.ext.coverage',
     # 'sphinx.ext.graphviz',
+    # --- only the following extensions have to be installed via pip ---
+    # typehints extension does that already so no need to also include 'sphinx_autodoc_annotation',
+    'sphinx_autodoc_typehints',
     'sphinx_rtd_theme',
     'sphinx_paramlinks',
 ]
@@ -68,7 +74,8 @@ add_function_parentheses = True
 # - found at https://www.mankier.com/1/sphinx-all and https://github.com/traverseda/pycraft/blob/master/docs/conf.py.
 # intersphinx_mapping = {'https://docs.python.org/3.6': None}
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/' + '.'.join(map(str, sys.version_info[0:2])), None)
+    'python': ('https://docs.python.org/' + '.'.join(map(str, sys.version_info[0:2])), None),
+    'ae_console': ('https://ae-console.readthedocs.io/en/latest/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------º
@@ -115,3 +122,11 @@ elif html_theme == 'sphinx_rtd_theme':
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
+
+
+# -- substitutions for to provide ae module/sub-package info to rst files/templates
+rst_prolog = f"""
+.. |project_name| replace:: {package_name}
+.. |package_version| replace:: {package_version}
+.. |import_name| replace:: {import_name}
+"""

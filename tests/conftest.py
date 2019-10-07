@@ -1,36 +1,22 @@
+""" fixtures for this ae namespace module. """
 import os
 import sys
 import glob
 import pytest
 
+# noinspection PyProtectedMember
 from ae.core import app_inst_lock, _app_instances, _unregister_app_instance
-from ae.console import MAIN_SECTION_DEF
-
-
-@pytest.fixture
-def config_fna_vna_vva(request):
-    def _setup_and_teardown(file_name='test_config.cfg', var_name='test_config_var', var_value='test_value'):
-        if os.path.sep not in file_name:
-            file_name = os.path.join(os.getcwd(), file_name)
-        with open(file_name, 'w') as f:
-            f.write(f"[{MAIN_SECTION_DEF}]\n{var_name} = {var_value}")
-
-        def _tear_down():               # using yield instead of finalizer does not execute the teardown part
-            os.remove(file_name)
-        request.addfinalizer(_tear_down)
-
-        return file_name, var_name, var_value
-
-    return _setup_and_teardown
 
 
 @pytest.fixture
 def tst_app_key():
+    """ provide value used in tests for AppBase.app_key. """
     return 'pyTstSysArgv0Mock'
 
 
 @pytest.fixture
 def sys_argv_app_key_restore(tst_app_key):          # needed for tests using sys.argv/get_opt() of ConsoleApp
+    """ change sys.argv before test run to use test app key and restore sys.argv after test run. """
     old_argv = sys.argv
     sys.argv = [tst_app_key, ]
     yield tst_app_key
@@ -38,7 +24,8 @@ def sys_argv_app_key_restore(tst_app_key):          # needed for tests using sys
 
 
 @pytest.fixture
-def restore_app_env():                              # needed for tests instantiating AppBase/ConsoleApp
+def restore_app_env():
+    """ restore app environment after test run - needed for tests instantiating AppBase/ConsoleApp. """
     yield "a,n,y"
     # added outer list() because unregister does _app_instances.pop() calls
     # and added inner list() because the .keys() 'generator' object is not reversible
@@ -49,6 +36,7 @@ def restore_app_env():                              # needed for tests instantia
 
 
 def delete_files(file_name, keep_ext=False, ret_type='count'):
+    """ clean up test log files and other test files after test run. """
     if keep_ext:
         fp, fe = os.path.splitext(file_name)
         file_mask = fp + '*' + fe

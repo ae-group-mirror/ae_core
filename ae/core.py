@@ -11,8 +11,8 @@ Constants
 For to set the debug level of your application run-time you can use one of the constants
 :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`, :data:`DEBUG_LEVEL_VERBOSE`
 or :data:`DEBUG_LEVEL_TIMESTAMPED`. The debug level of your application can be either
-hard-coded in your code or optionally also externally (using the :ref:`config-files`
-or :ref:`config-options` of the module :mod:`ae.console`).
+hard-coded in your code or optionally also externally (using the :ref:`ae_console:config-files`
+or :ref:`ae_console:config-options` of the module :mod:`ae.console`).
 
 Short names for all debug level constants are provided by the dict :data:`DEBUG_LEVELS`.
 
@@ -46,8 +46,8 @@ determined literal values.
 The functions :data:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
 helpful for to inspect the call stack. With them you can easily access the stack frame
 and read e.g. variable values of the callers of your functions/methods. The class
-:class:`~ae.console.ConsoleApp` is using them e.g. for to determine the
-:ref:`version <app-version>` and :ref:`title <app-title>` of your application.
+:class:`AppBase` is using them e.g. for to determine the
+:attr:`version <AppBase.app_version>` and :attr:`title <AppBase.app_title>` of your application.
 
 Other helper functions for the inspection and debugging of your application are
 :func:`full_stack_trace`, :func:`sys_env_dict` and :func:`sys_env_text`.
@@ -172,7 +172,8 @@ to your needs you can specify the maximum log file size in MBytes with the argum
 
 By using the :class:`~ae.console.ConsoleApp` class instead of :class:`AppBase` you can
 alternatively store the logging configuration of your application within a
-:ref:`configuration variable <config-variables>` or a :ref:`configuration option <config-options>`.
+:ref:`configuration variable <ae_console:config-variables>` or a
+:ref:`configuration option <ae_console:config-options>`.
 The order of precedence for to find the appropriate logging configuration of each
 app instance is documented :meth:`here <ae.console.ConsoleApp._init_logging>` .
 
@@ -211,9 +212,9 @@ The debug level can be changed at any time in your application code by directly 
 the new debug level to the :attr:`~AppBase.debug_level` attribute. If you prefer to change
 the (here hard-coded) debug levels dynamically, then use the :class:`ConsoleApp` instead
 of :class:`AppBase`, because :class:`ConsoleApp` provides the `debugLevel`
-:ref:`configuration file variable <config-variables>`
-and :ref:`commend line option <config-options>` for
-to specify :ref:`the actual debug level <pre-defined-config-options>` without the need
+:ref:`configuration file variable <ae_console:config-variables>`
+and :ref:`commend line option <ae_console:config-options>` for
+to specify :ref:`the actual debug level <ae_console:pre-defined-config-options>` without the need
 to change (and re-build) your application code.
 """
 import ast
@@ -415,7 +416,7 @@ def exec_with_return(code_block, glo_vars: Optional[dict] = None, loc_vars: Opti
     if loc_vars is None:
         loc_vars = locals()
 
-    code_ast = ast.parse(code_block)
+    code_ast = ast.parse(code_block)    # TODO: refactor moving == ast.Expr check up to here
     init_ast = copy.deepcopy(code_ast)
     init_ast.body = code_ast.body[:-1]
     last_ast = copy.deepcopy(code_ast)

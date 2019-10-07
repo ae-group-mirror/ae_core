@@ -3,7 +3,7 @@
 import threading
 
 import pytest
-from ae.tests.conftest import delete_files
+from tests.conftest import delete_files
 
 import logging
 import os
@@ -12,6 +12,7 @@ import datetime
 
 from typing import cast
 
+# noinspection PyProtectedMember
 from ae.core import (
     MAX_NUM_LOG_FILES, DATE_ISO,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
@@ -718,6 +719,7 @@ class TestAeLogging:
 
     def test_threaded_sub_app_logging(self, restore_app_env):
         def sub_app_po():
+            """ test thread function """
             nonlocal sub
             sub = SubApp('test_sub_app_thread', app_name=sp)
             sub.init_logging(log_file_name=sp + log_file)
