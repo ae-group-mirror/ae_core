@@ -1,10 +1,12 @@
 """ generic setup.py used for all modules and sub-packages of the ae namespace package. """
+import glob
 import os
 import re
 import setuptools
 
 
 namespace_root = 'ae'
+docs_folder = 'docs'
 
 docs_require = [
     'sphinx',
@@ -36,12 +38,8 @@ def read_package_version():
 
     also used by docs/conf.py (package need to be installed via pip install -e .)
     """
-    if os.path.exists(package_path + '.py'):
-        file_name = package_path + '.py'
-    elif os.path.exists(package_path + os.path.sep + '__init__.py'):
-        file_name = package_path + os.path.sep + '__init__.py'
-    else:
-        raise RuntimeError(f"Main module of package {package_name} not found in {package_path}")
+    file_name = sub_name + ('.py' if is_module else os.path.sep + '__init__.py')
+    file_name = os.path.join(package_path, file_name)
     with open(file_name) as fh:
         file_content = fh.read()
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", file_content, re.M)
@@ -60,11 +58,33 @@ def patch_read_me():
     return file_content
 
 
-setup_path = os.path.abspath(os.path.dirname(__file__))
-package_name = os.path.basename(setup_path)             # results in package name e.g. 'ae_core'
-pip_name = package_name.replace(namespace_root + '_', namespace_root + '-')     # e.g. 'ae-core'
-import_name = package_name.replace(namespace_root + '_', namespace_root + '.')  # e.g. 'ae.core'
-package_path = os.path.join(setup_path, package_name.replace(namespace_root + '_', namespace_root + os.path.sep))
+cwd = os.getcwd()
+if os.path.exists('setup.py'):      # local build
+    setup_path = cwd
+elif os.path.exists('conf.py'):     # RTD build
+    setup_path = os.path.abspath('..')
+else:
+    raise RuntimeError(f"Neither setup.py nor conf.py found in current working directory {cwd}")
+package_path = os.path.join(setup_path, namespace_root)
+if not os.path.exists(package_path):
+    raise RuntimeError(f"Package path {package_path} not found")
+modules = glob.glob(os.path.join(package_path, '*.py'))
+if len(modules) > 1:
+    raise RuntimeError(f"More than one module found: {modules}")
+elif len(modules) == 0:
+    sub_packages = [_ for _ in glob.glob(os.path.join(package_path, '*' + os.path.sep)) if '__pycache__' not in _]
+    if len(sub_packages) > 1:
+        raise RuntimeError(f"More than one sub-package found: {sub_packages}")
+    elif len(sub_packages) == 0:
+        raise RuntimeError(f"Neither module nor sub-package found in package path {package_path}")
+    is_module = False
+    sub_name = os.path.split(sub_packages[0][:-1])[1]
+else:
+    is_module = True
+    sub_name = os.path.split(os.path.splitext(modules[0])[0])[1]
+package_name = namespace_root + '_' + sub_name  # results in package name e.g. 'ae_core'
+pip_name = namespace_root + '-' + sub_name                              # e.g. 'ae-core'
+import_name = namespace_root + '.' + sub_name                           # e.g. 'ae.core'
 package_version = read_package_version()
 
 

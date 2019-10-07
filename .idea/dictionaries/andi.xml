@@ -21,6 +21,7 @@
       <w>paramlinks</w>
       <w>paramref</w>
       <w>pluggy</w>
+      <w>pycache</w>
       <w>pydev</w>
       <w>pylint</w>
       <w>pytest</w>
