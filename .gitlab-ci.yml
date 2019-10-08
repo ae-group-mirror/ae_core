@@ -4,9 +4,6 @@ stages:
   - deploy
 
 before_script:
-   - pip install sphinx_autodoc_typehints
-   - pip install sphinx_rtd_theme
-   - pip install sphinx_paramlinks
    - pip install twine
    - python setup.py sdist
 
@@ -16,6 +13,6 @@ deploy_staging:
     TWINE_USERNAME: $PYPI_USERNAME
     TWINE_PASSWORD: $PYPI_PASSWORD
   script:
-    - twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+    - twine upload --verbose --repository-url https://test.pypi.org/legacy/ dist/*
   except:
     - tags

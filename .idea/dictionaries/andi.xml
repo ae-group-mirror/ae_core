@@ -18,6 +18,7 @@
       <w>meth</w>
       <w>modindex</w>
       <w>nfkd</w>
+      <w>nosignatures</w>
       <w>paramlinks</w>
       <w>paramref</w>
       <w>pluggy</w>
@@ -29,6 +30,7 @@
       <w>searchbox</w>
       <w>strftime</w>
       <w>strptime</w>
+      <w>toctree</w>
       <w>typehints</w>
       <w>tzinfo</w>
       <w>undoc</w>

@@ -15,7 +15,7 @@ import sys
 sys.path.append('..')       # resulting in PEP8 error E402 (with pylint use comment: # pylint: disable=E402)
 # .. and because the next PyCharm inspection suppress comment did not work, now E402 gets ignored in project settings
 # noinspection PyPep8
-from setup import import_name, package_name, package_version
+from setup import docs_require, import_name, package_name, package_version, patch_install_templates
 
 
 # -- Project information -----------------------------------------------------
@@ -30,21 +30,21 @@ version = package_version
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+# ---
+# sphinx_rtd_theme is since Sphinx 1.4 no longer integrated (like alabaster)
+# spinx_autodoc_typehints is replacing/including sphinx_autodoc_annotation
 extensions = [
     # 'sphinx.ext.autodoc',     # automatically added by autosummary
     'sphinx.ext.autosummary',
-    'sphinx.ext.viewcode',  # include package module source code
+    'sphinx.ext.viewcode',      # include package module source code
     'sphinx.ext.intersphinx',
     # 'sphinx.ext.coverage',
     # 'sphinx.ext.graphviz',
-    # --- only the following extensions have to be installed via pip ---
-    # typehints extension does that already so no need to also include 'sphinx_autodoc_annotation',
-    'sphinx_autodoc_typehints',
-    'sphinx_rtd_theme',
-    'sphinx_paramlinks',
 ]
 if package_name == 'ae_sys_data':
     extensions.append('sphinx.ext.graphviz')
+# --- add the extensions that have to be installed via pip ---
+extensions.extend(docs_require)
 
 # -- autodoc config
 autodoc_default_options = {
@@ -130,3 +130,7 @@ rst_prolog = f"""
 .. |package_version| replace:: {package_version}
 .. |import_name| replace:: {import_name}
 """
+
+
+# prepare index.rst from template
+patch_install_templates()

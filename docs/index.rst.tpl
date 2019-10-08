@@ -4,7 +4,7 @@ module |import_name| version |version| of application environment for python
 * pure python
 * no external dependencies
 * fully typed (:pep:`526`)
-* fully :ref:`documented <ae-modules>`
+* fully :ref:`documented <ae-portion>`
 * 100 % test coverage
 * multi thread save
 * highly configurable logging (optionally with log file rotation)
@@ -12,16 +12,16 @@ module |import_name| version |version| of application environment for python
 * part of the freely extendable ae namespace package (:pep:`420`)
 
 
-.. _ae-modules:
+.. _ae-portion:
 
-ae modules and sub-packages
----------------------------
+ae namespace package portion (module/sub-package)
+-------------------------------------------------
 
 .. autosummary::
     :toctree: _autosummary
     :nosignatures:
 
-    ae.core
+    {import_name}
 
 
 Indices and tables
@@ -30,4 +30,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

@@ -1,103 +1,89 @@
-""" generic setup.py used for all modules and sub-packages of the ae namespace package. """
+""" generic setup.py used for the portions (modules or sub-packages) of the ae namespace package.
+
+    also used by docs/conf.py (package need to be installed via pip install -e .)
+"""
 import glob
 import os
 import re
 import setuptools
+import sys
 
 
-namespace_root = 'ae'
-docs_folder = 'docs'
-
-docs_require = [
-    'sphinx',
-    'sphinx_autodoc_typehints',
-    'sphinx_rtd_theme',     # since Sphinx 1.4 no longer integrated (like alabaster)
-    'sphinx_paramlinks',
-    # typehints extension does that already so no need to also include 'sphinx-autodoc-annotation',
-]
-
-tests_require = [
-    'pytest',
-    'pytest-cov',
-]
-
-
-def replace_placeholders(file_content):
-    """ replace placeholders within the passed file content """
-    return file_content \
-        .replace('{{setup_path}}', setup_path) \
-        .replace('{{package_name}}', package_name) \
-        .replace('{{pip_name}}', pip_name) \
-        .replace('{{import_name}}', import_name) \
-        .replace('{{package_path}}', package_path) \
-        .replace('{{package_version}}', package_version)
+def file_content(file_name):
+    """ returning content of the file specified by file_name arg as string. """
+    with open(file_name) as fh:
+        content = fh.read()
+    return content
 
 
 def read_package_version():
-    """ read version of module/sub-package directly from the module or from the __init__.py of the sub-package.
-
-    also used by docs/conf.py (package need to be installed via pip install -e .)
-    """
-    file_name = sub_name + ('.py' if is_module else os.path.sep + '__init__.py')
+    """ read version of module/sub-package directly from the module or from the __init__.py of the sub-package. """
+    file_name = portion_name + ('.py' if is_module else os.path.sep + '__init__.py')
     file_name = os.path.join(package_path, file_name)
-    with open(file_name) as fh:
-        file_content = fh.read()
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", file_content, re.M)
+    content = file_content(file_name)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
     if not version_match:
         raise RuntimeError(f"Unable to find version string of package {package_name} within {file_name}")
     return version_match.group(1)
 
 
-def patch_read_me():
-    """ create final README.md from the ae namespace package template. """
-    with open("AE_PACKAGES_README.md") as fh:
-        file_content = fh.read()
-    file_content = replace_placeholders(file_content)
-    with open("README.md", 'w') as fh:
-        fh.write(file_content)
-    return file_content
+def patch_install_templates():
+    """ create final files from all found install ae namespace package templates. """
+    for fn in glob.glob('**/*.*' + template_extension, recursive=True):
+        content = file_content(fn).format(**globals())
+        with open(fn[:-len(template_extension)], 'w') as fh:
+            fh.write(content)
 
 
-cwd = os.getcwd()
-if os.path.exists('setup.py'):      # local build
-    setup_path = cwd
-elif os.path.exists('conf.py'):     # RTD build
-    setup_path = os.path.abspath('..')
-else:
+def determine_setup_path():
+    """ check if setup.py got called from portion root or from docs/RTD root. """
+    cwd = os.getcwd()
+    if os.path.exists('setup.py'):      # local build
+        return cwd
+    if os.path.exists('conf.py'):       # RTD build
+        return os.path.abspath('..')
     raise RuntimeError(f"Neither setup.py nor conf.py found in current working directory {cwd}")
+
+
+def determine_portion(portion_type='module', portion_end='.py'):
+    """ determine the ae namespace package portion (either a module or a sub-package). """
+    search_module = portion_type == 'module'
+    portions = [fn for fn in glob.glob(os.path.join(package_path, '*' + portion_end)) if '__' not in fn]
+    if len(portions) > 1:
+        raise RuntimeError(f"More than one {portion_type} found: {portions}")
+    if len(portions) == 0:
+        if not search_module:
+            raise RuntimeError(f"Neither module nor sub-package found in package path {package_path}")
+        return determine_portion('sub-package', os.path.sep)
+    return os.path.split(portions[0][:-len(portion_end)])[1], search_module
+
+
+namespace_root = 'ae'
+template_extension = '.tpl'
+setup_path = determine_setup_path()
 package_path = os.path.join(setup_path, namespace_root)
 if not os.path.exists(package_path):
     raise RuntimeError(f"Package path {package_path} not found")
-modules = glob.glob(os.path.join(package_path, '*.py'))
-if len(modules) > 1:
-    raise RuntimeError(f"More than one module found: {modules}")
-elif len(modules) == 0:
-    sub_packages = [_ for _ in glob.glob(os.path.join(package_path, '*' + os.path.sep)) if '__pycache__' not in _]
-    if len(sub_packages) > 1:
-        raise RuntimeError(f"More than one sub-package found: {sub_packages}")
-    elif len(sub_packages) == 0:
-        raise RuntimeError(f"Neither module nor sub-package found in package path {package_path}")
-    is_module = False
-    sub_name = os.path.split(sub_packages[0][:-1])[1]
-else:
-    is_module = True
-    sub_name = os.path.split(os.path.splitext(modules[0])[0])[1]
-package_name = namespace_root + '_' + sub_name  # results in package name e.g. 'ae_core'
-pip_name = namespace_root + '-' + sub_name                              # e.g. 'ae-core'
-import_name = namespace_root + '.' + sub_name                           # e.g. 'ae.core'
+portion_name, is_module = determine_portion()
+package_name = namespace_root + '_' + portion_name  # results in package name e.g. 'ae_core'
+pip_name = namespace_root + '-' + portion_name                              # e.g. 'ae-core'
+import_name = namespace_root + '.' + portion_name                           # e.g. 'ae.core'
 package_version = read_package_version()
+docs_require = file_content(os.path.join(setup_path, 'docs', 'requirements.txt')).strip().split('\n')
+tests_require = ['pytest', 'pytest-cov']
 
 
 if __name__ == "__main__":
-    long_description = patch_read_me()
+    if 'install' in sys.argv:
+        patch_install_templates()
 
     setuptools.setup(
         name=package_name,              # pip install name (not the import package name)
         version=package_version,
         author="Andi Ecker",
         author_email="aecker2@gmail.com",
-        description=package_name + " sub-package/portion of python application environment namespace package",
-        long_description=long_description,
+        description=package_name + " portion of python application environment namespace package",
+        long_description=file_content("README.md"),
         long_description_content_type="text/markdown",
         url="https://gitlab.com/ae-group/" + package_name,
         # don't needed for native/implicit namespace packages: namespace_packages=['ae'],
