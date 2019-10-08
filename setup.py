@@ -1,6 +1,15 @@
 """ generic setup.py used for the portions (modules or sub-packages) of the ae namespace package.
 
-    also used by docs/conf.py (package need to be installed via pip install -e .)
+Also used by docs/conf.py (package need to be installed via `pip install -e .`).
+
+Server Configuration:
+
+* Gitlab.com/settings/ci_cd/variables: add protected vars PYPI_USERNAME and PYPI_PASSWORD (mark also as masked).
+* PyPi.org: -
+* readthedocs.org/dashboard/<project>/edit/Admin/Advanced Settings/Default Settings:
+    * Requirements file: docs/requirements.txt
+    * Install Project: check
+    * Use System Packages: check
 """
 import glob
 import os

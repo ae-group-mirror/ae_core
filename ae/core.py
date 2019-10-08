@@ -43,7 +43,7 @@ the evaluation of dynamic python expressions much easier. These functions are e.
 by the :class:`~ae.literal.Literal` class for the implementation of dynamically
 determined literal values.
 
-The functions :data:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
+The functions :func:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
 helpful for to inspect the call stack. With them you can easily access the stack frame
 and read e.g. variable values of the callers of your functions/methods. The class
 :class:`AppBase` is using them e.g. for to determine the
@@ -91,6 +91,30 @@ method will make sure that all sub-apps and threads get terminated and joined.
 Additionally all print-out buffers will be flushed for to include all the info
 of the critical error (the last debug and error messages) into the
 standard error/output and into any activated log files.
+
+
+Basic Usage
+...........
+
+At the top of your python application main file/module create an instance of the class :class:`AppBase`::
+
+    '' '' '' docstring of your application main module '' '' ''
+    from console import AppBase
+
+    __version__ = '1.2.3'
+
+    ca = AppBase()
+
+In the above example the :class:`AppBase` instance will automatically use the docstring of your application
+main module as application title and the string in the module variable __version___ as application version.
+Alternatively you can specify your application title and version string by passing them as the first two
+arguments (:paramref:`~AppBase.app_title` and :paramref:`~AppBase.app_version`)
+to the instantiation call of :class:`AppBase`.
+
+:class:`AppBase` also determines automatically the name/id of your application from the file base name
+of your application main/startup module (e.g. <app_name>.py or main.py). Also other application environment
+vars/options (like e.g. the application startup folder path and the current working directory path) will be
+automatically initialized for your application.
 
 
 Application Class Hierarchy
@@ -218,7 +242,6 @@ to specify :ref:`the actual debug level <ae_console:pre-defined-config-options>`
 to change (and re-build) your application code.
 """
 import ast
-import copy
 import datetime
 import faulthandler
 import inspect
@@ -232,10 +255,9 @@ import weakref
 
 from io import StringIO
 from string import ascii_letters, digits
-from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union
+from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type
 
-
-__version__ = '0.0.3'                           #: actual version of this package/module
+__version__ = '0.0.4'                           #: actual version of this package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -400,45 +422,46 @@ def correct_phone(phone, changed=False, removed=None, keep_1st_hyphen=False):
     return corr_phone, changed
 
 
-def exec_with_return(code_block, glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None):
+def exec_with_return(code_block, ignored_exceptions: Tuple[Type[Exception], ...] = (),
+                     glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Optional[Any]:
     """ execute python code block and return the resulting value of its last code line.
 
     Inspired by this SO answer
     https://stackoverflow.com/questions/33409207/how-to-return-value-from-exec-in-function/52361938#52361938.
 
-    :param code_block:      python code block to execute.
-    :param glo_vars:        optional globals() available in the code execution.
-    :param loc_vars:        optional locals() available in the code execution.
-    :return:                value of the expression at the last code line or None if last code line is no expression.
+    :param code_block:          python code block to execute.
+    :param ignored_exceptions:  tuple of ignored exceptions.
+    :param glo_vars:            optional globals() available in the code execution.
+    :param loc_vars:            optional locals() available in the code execution.
+    :return:                    value of the expression at the last code line
+                                or None if either code block is empty, only contains comment lines, or one of
+                                the ignorable exceptions raised or if last code line is no expression.
     """
     if glo_vars is None:
         glo_vars = globals()
     if loc_vars is None:
         loc_vars = locals()
 
-    code_ast = ast.parse(code_block)    # TODO: refactor moving == ast.Expr check up to here
-    init_ast = copy.deepcopy(code_ast)
-    init_ast.body = code_ast.body[:-1]
-    last_ast = copy.deepcopy(code_ast)
-    last_ast.body = code_ast.body[-1:]
-
-    exec(compile(init_ast, "<ast>", "exec"), glo_vars, loc_vars)
-    last_line = last_ast.body[0]
-    if type(last_line) == ast.Expr:
-        last_line.lineno = 0
-        last_line.col_offset = 0
-        result = ast.Expression(last_line.value, lineno=0, col_offset=0)
-        return eval(compile(result, "<ast>", "eval"), glo_vars, loc_vars)
-
-    exec(compile(last_ast, "<ast>", "exec"), glo_vars, loc_vars)
+    try:
+        code_ast = ast.parse(code_block)    # raises SyntaxError if code block is invalid
+        nodes = code_ast.body
+        if nodes:
+            if isinstance(nodes[-1], ast.Expr):
+                last_node = nodes.pop()
+                if len(nodes) > 0:
+                    exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
+                return eval(compile(ast.Expression(last_node.value), "<ast>", 'eval'), glo_vars, loc_vars)
+            exec(code_ast, glo_vars, loc_vars)
+    except ignored_exceptions:
+        pass                            # RETURN None if one of the ignorable exceptions raised in compiling
 
 
 def force_encoding(text: AnyStr, encoding: str = DEF_ENCODING, errors: str = DEF_ENCODE_ERRORS) -> str:
     """ force/ensure the encoding of text (str or bytes) without any UnicodeDecodeError/UnicodeEncodeError.
 
     :param text:        text as str/byte.
-    :param encoding:    encoding (def=DEF_ENCODING).
-    :param errors:      encode error handling (def=:data:`DEF_ENCODE_ERRORS`).
+    :param encoding:    encoding (def= :data:`DEF_ENCODING`).
+    :param errors:      encode error handling (def= :data:`DEF_ENCODE_ERRORS`).
 
     :return:            text as str (with all characters checked/converted/replaced for to be encode-able).
     """
@@ -506,7 +529,7 @@ def parse_date(literal: str, *additional_formats: str, replace: Optional[Dict[st
 
     :param literal:             date literal string in the format of :data:`DATE_ISO`, :data:`DATE_TIME_ISO` or in
                                 one of the additional formats passed into the
-                                :paramref:`parse_date.additional_formats` arguments tuple.
+                                :paramref:`~parse_date.additional_formats` arguments tuple.
     :param additional_formats:  additional date literal format string masks (supported mask characters are documented
                                 at the `format` argument of the python method :meth:`~datetime.datetime.strptime`).
     :param replace:             dict of replace keyword arguments for :meth:`datetime.datetime.replace` call.
@@ -676,7 +699,7 @@ def to_ascii(unicode_str: str) -> str:
     return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 
-def try_call(func: Callable, *args, ignored_exceptions: Optional[tuple] = (), **kwargs) -> Any:
+def try_call(func: Callable, *args, ignored_exceptions: Tuple[Type[Exception], ...] = (), **kwargs) -> Any:
     """ call function ignoring specified exceptions and return function return value.
 
     :param func:                function to be called.
@@ -693,7 +716,7 @@ def try_call(func: Callable, *args, ignored_exceptions: Optional[tuple] = (), **
     return ret
 
 
-def try_eval(expr: str, ignored_exceptions: Optional[tuple] = (),
+def try_eval(expr: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
              glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Any:
     """ evaluate expression string ignoring specified exceptions and return evaluated value.
 
@@ -717,7 +740,7 @@ def try_eval(expr: str, ignored_exceptions: Optional[tuple] = (),
     return ret
 
 
-def try_exec(code_block: str, ignored_exceptions: Optional[tuple] = (),
+def try_exec(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
              glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Any:
     """ execute python code block string ignoring specified exceptions and return value of last code line in block.
 
@@ -784,7 +807,8 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
 
     :param objects:             tuple of objects to be printed. If the first object is a string that
                                 starts with a \\\\r character then the print-out will be only sent
-                                to the standard output (and will not be added to any active log files).
+                                to the standard output (and will not be added to any active log files -
+                                see also :paramref:`~print_out.end` argument).
     :param sep:                 separator character between each printed object/string (def=" ").
     :param end:                 finalizing character added to the end of this print-out (def="\\\\n").
                                 Pass \\\\r for to suppress the print-out into :ref:`ae log file <ae-log-file>`
@@ -798,11 +822,12 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     :param logger:              used logger for to output `objects` (def=None). Ignored if the
                                 :paramref:`print_out.file` argument gets specified/passed.
     :param app:                 the app instance from where this print-out got initiated.
-    :param kwargs:              catch unsupported kwargs for debugging (all items will be printed to the output stream).
+    :param kwargs:              catch unsupported kwargs for debugging (all items will be printed to all
+                                the activated logging/output streams).
 
-    This function is silently handling and auto-correcting string encode errors for output streams which are
+    This function is silently handling and auto-correcting string encode errors for output/log streams which are
     not supporting unicode. Any instance of :class:`AppBase` is providing this function as a method with the
-    :func:`same name <AppBase.print_out>`). It is recommended to call/use the instance method instead of this function.
+    :func:`same name <AppBase.print_out>`). It is recommended to call/use this instance method instead of this function.
 
     In multi-threaded applications this function prevents dismembered/fluttered print-outs from different threads.
 

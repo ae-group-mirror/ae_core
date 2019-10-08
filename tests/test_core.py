@@ -5,10 +5,11 @@ import threading
 import pytest
 from tests.conftest import delete_files
 
+import datetime
 import logging
 import os
 import sys
-import datetime
+import textwrap
 
 from typing import cast
 
@@ -31,8 +32,28 @@ module_var = 'module_var_val'   # used for stack_var()/try_exec() tests
 
 class TestCoreHelpers:
     def test_exec_with_return(self):
+        assert exec_with_return("") is None
+        assert exec_with_return('1 + 2') == 3
         assert exec_with_return('a = 1 + 2; a') == 3
         assert exec_with_return('a = 1 + 2; a + 3') == 6
+        assert exec_with_return('\na = 1 + 2\na\n') == 3
+
+        syn_err = 'if :'
+        with pytest.raises(SyntaxError):
+            exec_with_return(syn_err)
+        assert exec_with_return(syn_err, ignored_exceptions=(SyntaxError, )) is None
+
+        if_stmt = """
+                            if 1 + 2 == 3:
+                                a = 6
+                            else:
+                                a = 9
+                            a
+        """
+        with pytest.raises(IndentationError):
+            exec_with_return(if_stmt)
+        if_stmt = textwrap.dedent(if_stmt)
+        assert exec_with_return(if_stmt) == 6
 
         assert exec_with_return('a = b + 6; a', glo_vars=dict(b=3)) == 9
         assert exec_with_return('a = b + 6; a', loc_vars=dict(b=3)) == 9
