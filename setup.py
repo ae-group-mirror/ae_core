@@ -6,7 +6,6 @@ import glob
 import os
 import re
 import setuptools
-import sys
 
 
 def file_content(file_name):
@@ -74,8 +73,7 @@ tests_require = ['pytest', 'pytest-cov']
 
 
 if __name__ == "__main__":
-    if 'install' in sys.argv:
-        patch_install_templates()
+    patch_install_templates()
 
     setuptools.setup(
         name=package_name,              # pip install name (not the import package name)
