@@ -1,4 +1,7 @@
-""" fixtures for this ae namespace module. """
+""" fixtures for this ae namespace portion.
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# All changes will be deployed automatically to all the portions of this namespace package.
+"""
 import os
 import sys
 import glob

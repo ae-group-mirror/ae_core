@@ -1,3 +1,7 @@
+<!--
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# All changes will be deployed automatically to all the portions of this namespace package.
+-->
 # Version {package_version} Of {package_name} Package
 
 The modules and sub-packages of the Application Environment for Python are within

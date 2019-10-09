@@ -1,6 +1,10 @@
-""" generic setup.py used for the portions (modules or sub-packages) of the ae namespace package.
+""" common setup for to manage portions (modules or sub-packages) of the ae namespace package.
 
-Also used by docs/conf.py (package need to be installed via `pip install -e .`).
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# All changes will be deployed automatically to all the portions of this namespace package.
+
+This file get exclusively used by each portion of this namespace package for builds (sdist/bdist_wheels)
+and installation (install); also gets imported by docs/conf.py (package need to be installed via `pip install -e .`).
 
 Server Configuration:
 
@@ -77,7 +81,8 @@ package_name = namespace_root + '_' + portion_name  # results in package name e.
 pip_name = namespace_root + '-' + portion_name                              # e.g. 'ae-core'
 import_name = namespace_root + '.' + portion_name                           # e.g. 'ae.core'
 package_version = read_package_version()
-docs_require = file_content(os.path.join(setup_path, 'docs', 'requirements.txt')).strip().split('\n')
+docs_require = [_ for _ in file_content(os.path.join(setup_path, 'docs', 'requirements.txt')).strip().split('\n')
+                if not _.startswith('#')]
 tests_require = ['pytest', 'pytest-cov']
 
 

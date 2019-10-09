@@ -1,5 +1,8 @@
 """ Configuration file for the Sphinx documentation builder.
 
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# All changes will be deployed automatically to all the portions of this namespace package.
+
 This file only contains a selection of the most common options. For a full
 list see the documentation:
 http://www.sphinx-doc.org/en/master/config

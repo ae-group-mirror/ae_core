@@ -1,5 +1,7 @@
 # Minimal makefile for Sphinx documentation
 #
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# All changes will be deployed automatically to all the portions of this namespace package.
 
 # You can set these variables from the command line, and also
 # from the environment for the first two.
