@@ -19,6 +19,7 @@ import glob
 import os
 import re
 import setuptools
+import sys
 
 
 def file_content(file_name):
@@ -81,13 +82,17 @@ package_name = namespace_root + '_' + portion_name  # results in package name e.
 pip_name = namespace_root + '-' + portion_name                              # e.g. 'ae-core'
 import_name = namespace_root + '.' + portion_name                           # e.g. 'ae.core'
 package_version = read_package_version()
-docs_require = [_ for _ in file_content(os.path.join(setup_path, 'docs', 'requirements.txt')).strip().split('\n')
-                if not _.startswith('#')]
+
+docs_require = []
+if os.path.exists(os.path.join(setup_path, 'docs')):
+    docs_require = [_ for _ in file_content(os.path.join(setup_path, 'docs', 'requirements.txt')).strip().split('\n')
+                    if not _.startswith('#')]
 tests_require = ['pytest', 'pytest-cov']
 
 
 if __name__ == "__main__":
-    patch_install_templates()
+    if 'install' in sys.argv or 'sdist' in sys.argv:
+        patch_install_templates()
 
     setuptools.setup(
         name=package_name,              # pip install name (not the import package name)
