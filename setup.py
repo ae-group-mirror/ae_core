@@ -1,4 +1,4 @@
-""" common setup for to manage portions (modules or sub-packages) of the ae namespace package.
+""" common setup for the portions (modules or sub-packages) of the ae namespace package.
 
 # THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
 # All changes will be deployed automatically to all the portions of this namespace package.
@@ -6,14 +6,6 @@
 This file get exclusively used by each portion of this namespace package for builds (sdist/bdist_wheels)
 and installation (install); also gets imported by docs/conf.py (package need to be installed via `pip install -e .`).
 
-Server Configuration:
-
-* Gitlab.com/settings/ci_cd/variables: add protected vars PYPI_USERNAME and PYPI_PASSWORD (mark also as masked).
-* PyPi.org: -
-* readthedocs.org/dashboard/<project>/edit/Admin/Advanced Settings/Default Settings:
-    * Requirements file: docs/requirements.txt
-    * Install Project: check
-    * Use System Packages: check
 """
 import glob
 import os
@@ -30,7 +22,7 @@ def file_content(file_name):
 
 
 def read_package_version():
-    """ read version of module/sub-package directly from the module or from the __init__.py of the sub-package. """
+    """ read version of portion directly from the module or from the __init__.py of the sub-package. """
     file_name = portion_name + ('.py' if is_module else os.path.sep + '__init__.py')
     file_name = os.path.join(package_path, file_name)
     content = file_content(file_name)
@@ -83,11 +75,14 @@ pip_name = namespace_root + '-' + portion_name                              # e.
 import_name = namespace_root + '.' + portion_name                           # e.g. 'ae.core'
 package_version = read_package_version()
 
-docs_require = []
-if os.path.exists(os.path.join(setup_path, 'docs')):
-    docs_require = [_ for _ in file_content(os.path.join(setup_path, 'docs', 'requirements.txt')).strip().split('\n')
-                    if not _.startswith('#')]
-tests_require = ['pytest', 'pytest-cov']
+requirements_file = os.path.join(setup_path, 'requirements.txt')
+if os.path.exists(requirements_file):
+    dev_require = [_ for _ in file_content(requirements_file).strip().split('\n')
+                   if not _.startswith('#')]
+else:
+    dev_require = ['pytest', 'pytest-cov']
+docs_require = [_ for _ in dev_require if _.startswith('sphinx_')]
+tests_require = [_ for _ in dev_require if _.startswith('pytest')]
 
 
 if __name__ == "__main__":
@@ -105,7 +100,7 @@ if __name__ == "__main__":
         url="https://gitlab.com/ae-group/" + package_name,
         # don't needed for native/implicit namespace packages: namespace_packages=['ae'],
         # packages=setuptools.find_packages(),
-        packages=setuptools.find_namespace_packages(include=[namespace_root]),  # find ae namespace module/sub-package
+        packages=setuptools.find_namespace_packages(include=[namespace_root]),  # find ae namespace portions
         python_requires=">=3.6",
         extras_require={
             'docs': docs_require,
