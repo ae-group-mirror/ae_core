@@ -1,3 +1,4 @@
+<!-- THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE. -->
 # Using This Package Securely
 
 ## Reporting Security Issues

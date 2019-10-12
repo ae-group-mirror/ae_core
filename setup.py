@@ -3,7 +3,7 @@
 # THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
 # All changes will be deployed automatically to all the portions of this namespace package.
 
-This file get used by each portion of this namespace package for builds (sdist/bdist_wheels)
+This file get run by each portion of this namespace package for builds (sdist/bdist_wheels)
 and installation (install); also gets imported by the root package (for the globals defined
 here) for documentation build (docs/conf.py), common file deploys and commit preparation.
 """
@@ -11,15 +11,13 @@ import glob
 import os
 import re
 import setuptools
-import sys
 from typing import List, Tuple
 
 
 def file_content(file_name: str) -> str:
     """ returning content of the file specified by file_name arg as string. """
-    with open(file_name) as fh:
-        content = fh.read()
-    return content
+    with open(file_name) as fp:
+        return fp.read()
 
 
 def patch_templates() -> List[str]:
@@ -43,18 +41,16 @@ def determine_setup_path() -> str:
     raise RuntimeError(f"Neither setup.py nor conf.py found in current working directory {cwd}")
 
 
-def read_package_version() -> str:
-    """ read version of portion directly from the module or from the __init__.py of the sub-package. """
-    file_name = portion_name + ('.py' if is_module else os.path.sep + '__init__.py')
-    file_name = os.path.join(package_path, file_name)
+def code_file_version(file_name: str) -> str:
+    """ read version of Python code file - from __version__ module variable initialization. """
     content = file_content(file_name)
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
     if not version_match:
-        raise RuntimeError(f"Unable to find version string of package {package_name} within {file_name}")
+        raise FileNotFoundError(f"Unable to find version string within {file_name}")
     return version_match.group(1)
 
 
-def determine_portion(portion_type='module', portion_end='.py') -> Tuple[str, bool]:
+def _determine_portion(portion_type='module', portion_end='.py') -> Tuple[str, bool]:
     """ determine ae namespace package portion (and if it is either a module or a sub-package). """
     search_module = portion_type == 'module'
     files = [fn for fn in glob.glob(os.path.join(package_path, '*' + portion_end)) if '__' not in fn]
@@ -63,8 +59,14 @@ def determine_portion(portion_type='module', portion_end='.py') -> Tuple[str, bo
     if len(files) == 0:
         if not search_module:
             raise RuntimeError(f"Neither module nor sub-package found in package path {package_path}")
-        return determine_portion('sub-package', os.path.sep)
+        return _determine_portion('sub-package', os.path.sep)
     return os.path.split(files[0][:-len(portion_end)])[1], search_module
+
+
+def _read_package_version(from_module: bool) -> str:
+    """ read version of portion directly from the module or from the __init__.py of the sub-package. """
+    file_name = portion_name + ('.py' if from_module else os.path.sep + '__init__.py')
+    return code_file_version(os.path.join(package_path, file_name))
 
 
 namespace_root = 'ae'
@@ -73,10 +75,10 @@ template_extension = '.tpl'
 setup_path = determine_setup_path()
 package_path = os.path.join(setup_path, namespace_root)
 if os.path.exists(package_path):
-    portion_name, is_module = determine_portion()   # running from portion repository
-    package_version = read_package_version()
+    portion_name, is_module = _determine_portion()   # run/imported by portion repository
+    package_version = _read_package_version(is_module)
 else:
-    portion_name = '<portion-name>'                 # running from namespace root repo
+    portion_name = '<portion-name>'                 # imported by namespace root repo
     package_version = 'x.y.z'
 package_name = namespace_root + '_' + portion_name  # results in package name e.g. 'ae_core'
 pip_name = namespace_root + '-' + portion_name                              # e.g. 'ae-core'
