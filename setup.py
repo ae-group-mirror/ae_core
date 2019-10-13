@@ -1,46 +1,37 @@
-""" common setup for the portions (modules or sub-packages) of the ae namespace package.
+""" common setup for root and portions (modules or sub-packages) of the ae namespace package.
 
 # THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
 # All changes will be deployed automatically to all the portions of this namespace package.
 
-This file get exclusively used by each portion of this namespace package for builds (sdist/bdist_wheels)
-and installation (install); also gets imported by docs/conf.py (package need to be installed via `pip install -e .`).
-
+This file get run by each portion of this namespace package for builds (sdist/bdist_wheels)
+and installation (install); also gets imported by the root package (for the globals defined
+here) for documentation build (docs/conf.py), common file deploys and commit preparation.
 """
 import glob
 import os
 import re
 import setuptools
-import sys
+from typing import List, Tuple
 
 
-def file_content(file_name):
+def file_content(file_name: str) -> str:
     """ returning content of the file specified by file_name arg as string. """
-    with open(file_name) as fh:
-        content = fh.read()
-    return content
+    with open(file_name) as fp:
+        return fp.read()
 
 
-def read_package_version():
-    """ read version of portion directly from the module or from the __init__.py of the sub-package. """
-    file_name = portion_name + ('.py' if is_module else os.path.sep + '__init__.py')
-    file_name = os.path.join(package_path, file_name)
-    content = file_content(file_name)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
-    if not version_match:
-        raise RuntimeError(f"Unable to find version string of package {package_name} within {file_name}")
-    return version_match.group(1)
-
-
-def patch_install_templates():
-    """ create final files from all found install ae namespace package templates. """
+def patch_templates() -> List[str]:
+    """ convert all ae namespace package templates found in the cwd or underneath to the final files. """
+    patched = list()
     for fn in glob.glob('**/*.*' + template_extension, recursive=True):
         content = file_content(fn).format(**globals())
-        with open(fn[:-len(template_extension)], 'w') as fh:
-            fh.write(content)
+        with open(fn[:-len(template_extension)], 'w') as fp:
+            fp.write(content)
+        patched.append(fn)
+    return patched
 
 
-def determine_setup_path():
+def determine_setup_path() -> str:
     """ check if setup.py got called from portion root or from docs/RTD root. """
     cwd = os.getcwd()
     if os.path.exists('setup.py'):      # local build
@@ -50,30 +41,48 @@ def determine_setup_path():
     raise RuntimeError(f"Neither setup.py nor conf.py found in current working directory {cwd}")
 
 
-def determine_portion(portion_type='module', portion_end='.py'):
-    """ determine the ae namespace package portion (either a module or a sub-package). """
+def code_file_version(file_name: str) -> str:
+    """ read version of Python code file - from __version__ module variable initialization. """
+    content = file_content(file_name)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
+    if not version_match:
+        raise FileNotFoundError(f"Unable to find version string within {file_name}")
+    return version_match.group(1)
+
+
+def _determine_portion(portion_type='module', portion_end='.py') -> Tuple[str, bool]:
+    """ determine ae namespace package portion (and if it is either a module or a sub-package). """
     search_module = portion_type == 'module'
-    portions = [fn for fn in glob.glob(os.path.join(package_path, '*' + portion_end)) if '__' not in fn]
-    if len(portions) > 1:
-        raise RuntimeError(f"More than one {portion_type} found: {portions}")
-    if len(portions) == 0:
+    files = [fn for fn in glob.glob(os.path.join(package_path, '*' + portion_end)) if '__' not in fn]
+    if len(files) > 1:
+        raise RuntimeError(f"More than one {portion_type} found: {files}")
+    if len(files) == 0:
         if not search_module:
             raise RuntimeError(f"Neither module nor sub-package found in package path {package_path}")
-        return determine_portion('sub-package', os.path.sep)
-    return os.path.split(portions[0][:-len(portion_end)])[1], search_module
+        return _determine_portion('sub-package', os.path.sep)
+    return os.path.split(files[0][:-len(portion_end)])[1], search_module
+
+
+def _read_package_version(from_module: bool) -> str:
+    """ read version of portion directly from the module or from the __init__.py of the sub-package. """
+    file_name = portion_name + ('.py' if from_module else os.path.sep + '__init__.py')
+    return code_file_version(os.path.join(package_path, file_name))
 
 
 namespace_root = 'ae'
+root_len = len(namespace_root)
 template_extension = '.tpl'
 setup_path = determine_setup_path()
 package_path = os.path.join(setup_path, namespace_root)
-if not os.path.exists(package_path):
-    raise RuntimeError(f"Package path {package_path} not found")
-portion_name, is_module = determine_portion()
+if os.path.exists(package_path):
+    portion_name, is_module = _determine_portion()   # run/imported by portion repository
+    package_version = _read_package_version(is_module)
+else:
+    portion_name = '<portion-name>'                 # imported by namespace root repo
+    package_version = 'x.y.z'
 package_name = namespace_root + '_' + portion_name  # results in package name e.g. 'ae_core'
 pip_name = namespace_root + '-' + portion_name                              # e.g. 'ae-core'
 import_name = namespace_root + '.' + portion_name                           # e.g. 'ae.core'
-package_version = read_package_version()
 
 requirements_file = os.path.join(setup_path, 'requirements.txt')
 if os.path.exists(requirements_file):
@@ -83,11 +92,13 @@ else:
     dev_require = ['pytest', 'pytest-cov']
 docs_require = [_ for _ in dev_require if _.startswith('sphinx_')]
 tests_require = [_ for _ in dev_require if _.startswith('pytest')]
+portions = [_ for _ in dev_require if _.startswith('ae_')]
+portions_import_names = ("\n" + " " * 4).join([_[:root_len] + '.' + _[root_len+1:] for _ in portions])  # -> index.rst
+portions_pypi_refs_md = "\n".join(f'* [{_}](https://pypi.org/project/{_} "ae namespace portion {_}")' for _ in portions)
 
 
 if __name__ == "__main__":
-    if 'install' in sys.argv or 'sdist' in sys.argv:
-        patch_install_templates()
+    patch_templates()
 
     setuptools.setup(
         name=package_name,              # pip install name (not the import package name)
