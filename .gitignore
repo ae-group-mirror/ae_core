@@ -1,5 +1,10 @@
-# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
-# All changes will be deployed automatically to all the portions of this namespace package.
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE. 
+# ae:additional exludes
+docs/_autosummary/
+docs/_modules/
+docs/_sources/
+docs/_static/
+
 
 # Created by https://www.gitignore.io/api/python
 # Edit at https://www.gitignore.io/?templates=python
@@ -65,7 +70,7 @@ coverage.xml
 .scrapy
 
 # Sphinx documentation
-../docs/_build/
+docs/_build/
 
 # PyBuilder
 target/

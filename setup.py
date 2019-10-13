@@ -50,6 +50,24 @@ def code_file_version(file_name: str) -> str:
     return version_match.group(1)
 
 
+version_patch_parser = re.compile(r"(^__version__ = ['\"]\d*[.]\d*[.])(\d+)([a-z]*['\"])", re.MULTILINE)
+
+
+def bump_code_file_patch_number(file_name: str) -> str:
+    """ read code file version and then increment the patch number by one and write the code file back. """
+    if not os.path.exists(file_name):
+        return f"Not existing file {file_name}"
+    content = file_content(file_name)
+    if not content:
+        return f"Empty file {file_name}"
+    content, replaced = version_patch_parser.subn(lambda m: m.group(1) + str(int(m.group(2)) + 1) + m.group(3), content)
+    if replaced != 1:
+        return f"Variable __version__ found {replaced} times in portion {portion_name} ({file_name})"
+    with open(file_name, 'w') as fp:
+        fp.write(content)
+    return ""
+
+
 def _determine_portion(portion_type='module', portion_end='.py') -> Tuple[str, bool]:
     """ determine ae namespace package portion (and if it is either a module or a sub-package). """
     search_module = portion_type == 'module'
