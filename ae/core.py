@@ -255,9 +255,9 @@ import weakref
 
 from io import StringIO
 from string import ascii_letters, digits
-from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type
+from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List
 
-__version__ = '0.0.8'                           #: actual version of this package/module
+__version__ = '0.0.9'                           #: actual version of this package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -285,7 +285,7 @@ LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.ERROR, DEBUG_LEV
 """
 
 
-def correct_email(email, changed=False, removed=None):
+def correct_email(email: str, changed: bool = False, removed: Optional[List[str]] = None) -> Tuple[str, bool]:
     """ check and correct email address from a user input (removing all comments)
 
     Special conversions that are not returned as changed/corrected are: the domain part of an email will be corrected
@@ -387,7 +387,8 @@ def correct_email(email, changed=False, removed=None):
     return local_part + domain_part, changed
 
 
-def correct_phone(phone, changed=False, removed=None, keep_1st_hyphen=False):
+def correct_phone(phone: str, changed: bool = False, removed: Optional[List[str]] = None, keep_1st_hyphen: bool = False
+                  ) -> Tuple[str, bool]:
     """ check and correct phone number from a user input (removing all invalid characters including spaces)
 
     :param phone:           phone number
@@ -422,7 +423,7 @@ def correct_phone(phone, changed=False, removed=None, keep_1st_hyphen=False):
     return corr_phone, changed
 
 
-def exec_with_return(code_block, ignored_exceptions: Tuple[Type[Exception], ...] = (),
+def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
                      glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Optional[Any]:
     """ execute python code block and return the resulting value of its last code line.
 
@@ -802,7 +803,7 @@ def _deactivate_multi_threading():
 
 def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] = None, flush: bool = False,
               encode_errors_def: str = DEF_ENCODE_ERRORS, logger: Optional['logging.Logger'] = None,
-              app: Optional['AppBase'] = None, **kwargs) -> None:
+              app: Optional['AppBase'] = None, **kwargs):
     """ universal/unbreakable print function - replacement for the :func:`built-in python function print() <print>`.
 
     :param objects:             tuple of objects to be printed. If the first object is a string that
