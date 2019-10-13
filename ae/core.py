@@ -11,8 +11,8 @@ Constants
 For to set the debug level of your application run-time you can use one of the constants
 :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`, :data:`DEBUG_LEVEL_VERBOSE`
 or :data:`DEBUG_LEVEL_TIMESTAMPED`. The debug level of your application can be either
-hard-coded in your code or optionally also externally (using the :ref:`ae_console:config-files`
-or :ref:`ae_console:config-options` of the module :mod:`ae.console`).
+hard-coded in your code or optionally also externally (using the :ref:`config-files`
+or :ref:`config-options` of the module :mod:`ae.console`).
 
 Short names for all debug level constants are provided by the dict :data:`DEBUG_LEVELS`.
 
@@ -196,8 +196,8 @@ to your needs you can specify the maximum log file size in MBytes with the argum
 
 By using the :class:`~ae.console.ConsoleApp` class instead of :class:`AppBase` you can
 alternatively store the logging configuration of your application within a
-:ref:`configuration variable <ae_console:config-variables>` or a
-:ref:`configuration option <ae_console:config-options>`.
+:ref:`configuration variable <config-variables>` or a
+:ref:`configuration option <config-options>`.
 The order of precedence for to find the appropriate logging configuration of each
 app instance is documented :meth:`here <ae.console.ConsoleApp._init_logging>` .
 
@@ -236,9 +236,9 @@ The debug level can be changed at any time in your application code by directly 
 the new debug level to the :attr:`~AppBase.debug_level` attribute. If you prefer to change
 the (here hard-coded) debug levels dynamically, then use the :class:`ConsoleApp` instead
 of :class:`AppBase`, because :class:`ConsoleApp` provides the `debugLevel`
-:ref:`configuration file variable <ae_console:config-variables>`
-and :ref:`commend line option <ae_console:config-options>` for
-to specify :ref:`the actual debug level <ae_console:pre-defined-config-options>` without the need
+:ref:`configuration file variable <config-variables>`
+and :ref:`commend line option <config-options>` for
+to specify :ref:`the actual debug level <pre-defined-config-options>` without the need
 to change (and re-build) your application code.
 """
 import ast
@@ -257,7 +257,7 @@ from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type
 
-__version__ = '0.0.5'                           #: actual version of this package/module
+__version__ = '0.0.6'                           #: actual version of this package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
