@@ -257,7 +257,8 @@ from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List
 
-__version__ = '0.0.11'                           #: actual version of this package/module
+
+__version__ = '0.0.12'                           #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -305,7 +306,7 @@ def correct_email(email: str, changed: bool = False, removed: Optional[List[str]
                         the index in the format "<index>:<removed_character(s)>".
     :return:            tuple of (possibly corrected email address, flag if email got changed/corrected)
     """
-    if email is None:
+    if not email:       # email could be None, also shortcut if email == ""
         return "", False
 
     if removed is None:
@@ -399,16 +400,12 @@ def correct_phone(phone: str, changed: bool = False, removed: Optional[List[str]
     :param keep_1st_hyphen: (optional, def=False) pass True for to keep at least the first occurring hyphen character.
     :return:                tuple of (possibly corrected phone number, flag if phone got changed/corrected).
     """
-
-    if phone is None:
-        return "", False
-
     if removed is None:
         removed = list()
 
     corr_phone = ''
     got_hyphen = False
-    for idx, ch in enumerate(phone):
+    for idx, ch in enumerate(phone or ""):      # allow phone Is None
         if ch.isdigit():
             corr_phone += ch
         elif keep_1st_hyphen and ch == '-' and not got_hyphen:
@@ -452,7 +449,7 @@ def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception],
                 if len(nodes) > 0:
                     exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
                 return eval(compile(ast.Expression(last_node.value), "<ast>", 'eval'), glo_vars, loc_vars)
-            exec(code_ast, glo_vars, loc_vars)
+            exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
     except ignored_exceptions:
         pass                            # RETURN None if one of the ignorable exceptions raised in compiling
 

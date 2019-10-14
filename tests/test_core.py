@@ -1,32 +1,32 @@
 """ test doc string for AppBase.app_title tests
 """
-import threading
-
-import pytest
-from tests.conftest import delete_files
 
 import datetime
+import datetime as test_dt
 import logging
 import os
 import sys
 import textwrap
-
+import threading
 from typing import cast
+
+import pytest
+try:
+    from conftest import delete_files
+except ImportError:
+    from .conftest import delete_files
 
 # noinspection PyProtectedMember
 from ae.core import (
-    MAX_NUM_LOG_FILES, DATE_ISO,
+    APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, DEBUG_LEVEL_TIMESTAMPED, MAX_NUM_LOG_FILES,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
     correct_email, correct_phone, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix, module_name,
     parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, to_ascii,
     try_call, try_eval, try_exec,
     AppBase, _PrintingReplicator, SubApp)
 
-import datetime as test_dt
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
-
-
 module_var = 'module_var_val'   # used for stack_var()/try_exec() tests
 
 
@@ -58,6 +58,10 @@ class TestCoreHelpers:
         assert exec_with_return('a = b + 6; a', glo_vars=dict(b=3)) == 9
         assert exec_with_return('a = b + 6; a', loc_vars=dict(b=3)) == 9
         assert exec_with_return('a = b + 6; a', glo_vars=dict(b=69), loc_vars=dict(b=3)) == 9
+
+        loc_vars = dict(b=3)
+        assert exec_with_return('a = b + 6', glo_vars=dict(b=69), loc_vars=loc_vars) is None
+        assert loc_vars.get('a') == 9
 
     def test_force_encoding_bytes(self):
         s = 'äöü'
@@ -162,7 +166,8 @@ class TestCoreHelpers:
         assert module_name(depth=38) == '__main__'
 
         assert module_name(depth=cast(int, None)) is None
-        assert module_name(depth=39) in (None, '_pydev_imps._pydev_execfile')   # PyCharm: differs in (run, debug) mode
+        # differs in (run, debug, coverage) mode and from where it runs (PyCharm, console)
+        assert module_name(depth=39) in (None, '_pydev_imps._pydev_execfile', 'coverage.execfile')
         assert module_name(depth=54) is None
         assert module_name(depth=69) is None
         assert module_name(depth=369) is None
@@ -195,9 +200,11 @@ class TestCoreHelpers:
 
         # print invalid/surrogate code point/char for to force UnicodeEncodeError exception in po() (testing coverage)
         us = chr(0xD801)
-        po(us, encode_errors_def='strict')
+        po(us, 123456, encode_errors_def='strict')      # .. also coverage of not-str args
         out, err = capsys.readouterr()
-        assert force_encoding(us) in out and err == ''
+        assert force_encoding(us) in out and '123456' in out and err == ''
+
+        po('\r', 123456)     # coverage of processing output (not captured by pytest)
 
     def test_parse_date(self):
         assert parse_date('2033-12-24') == datetime.datetime(year=2033, month=12, day=24)
@@ -237,6 +244,13 @@ class TestCoreHelpers:
         assert parse_date('2033-1-2 3:4:5.6', ret_date=None) == datetime.datetime(
             year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
 
+        alt_format = "%d.%m.%Y %H:%M:%S.%f+%z"
+        assert parse_date('2033-1-2 3:4:5.6', alt_format, replace=dict(microsecond=0)) == datetime.datetime(
+            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=0)
+        assert parse_date('2033-1-2 3:4:5.6', alt_format, ret_date=True) == datetime.date(year=2033, month=1, day=2)
+        assert parse_date('2033-1-2 3:4:5.6', alt_format, ret_date=None) == datetime.datetime(
+            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
+
         alt_format = "%d.%m.%Y %H:%M:%S.%f"
         assert parse_date('2.1.2033 3:4:5.6', alt_format) == datetime.datetime(
             year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
@@ -274,6 +288,7 @@ class TestCoreHelpers:
         assert parse_date('20330102 122748.69', alt_format) == datetime.datetime(
             year=2033, month=1, day=2, hour=12, minute=27, second=48, microsecond=690000)
 
+        assert parse_date('2033-12-24 12:59:12:36') is None
         assert parse_date('xx-yy-zz a:b:c') is None
         with pytest.raises(AttributeError):
             parse_date(cast(str, None))
@@ -359,6 +374,9 @@ class TestCoreHelpers:
     def test_sys_env_text(self):
         assert isinstance(sys_env_text(), str)
         assert 'python_ver' in sys_env_text()
+        ret = sys_env_text(extra_sys_env_dict=dict(test_add='TstAdd'))
+        assert 'test_add' in ret
+        assert 'TstAdd' in ret
 
     def test_to_ascii(self):
         assert to_ascii('äöü') == 'aou'
@@ -399,6 +417,7 @@ class TestCoreHelpers:
         code_block = "a=1+2; module_var"
         with pytest.raises(NameError):
             assert try_exec(code_block) == module_var
+        assert try_exec(code_block, ignored_exceptions=(NameError, )) is None
         assert try_exec(code_block, glo_vars=globals()) == module_var
 
         # check ae.core datetime/DATE_ISO context (globals)
@@ -411,12 +430,15 @@ class TestOfflineContactValidation:
     def test_correct_email(self):
         # edge cases: empty string or None as email
         assert correct_email('') == ('', False)
-        assert correct_email(None) == ('', False)
+        assert correct_email(cast(str, None)) == ('', False)
+        assert correct_email('test') == ('test', False)
+        assert correct_email('TesT') == ('TesT', False)
+        assert correct_email('TEST') == ('test', False)
         r = list()
         assert correct_email('', removed=r) == ('', False)
         assert r == []
         r = list()
-        assert correct_email(None, removed=r) == ('', False)
+        assert correct_email(cast(str, None), removed=r) == ('', False)
         assert r == []
 
         # special characters !#$%&'*+-/=?^_`{|}~; are allowed in local part
@@ -539,7 +561,7 @@ class TestOfflineContactValidation:
         assert r == ['4: ', '7: ', '8:"', '12:"', '13: ', '14:\\']
 
     def test_correct_phone(self):
-        assert correct_phone(None) == ('', False)
+        assert correct_phone(cast(str, None)) == ('', False)
         assert correct_phone('') == ('', False)
 
         r = list()
@@ -927,6 +949,16 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
     def test_app_find_title(self, restore_app_env):
         app = AppBase()
         assert app.app_title == __doc__
+
+    def test_log_line_prefix(self, restore_app_env):
+        app = AppBase(sys_env_id='Tee sst', debug_level=DEBUG_LEVEL_TIMESTAMPED)
+        prefix = app.log_line_prefix()
+        assert APP_KEY_SEP + 'Tee sst' in prefix
+        assert datetime.datetime.now().strftime(DATE_TIME_ISO)[:12] in prefix
+
+        app.debug_level = DEBUG_LEVEL_VERBOSE
+        prefix = app.log_line_prefix()
+        assert '[' + DEBUG_LEVELS[app.debug_level][0] + ']' in prefix
 
     def test_print_out(self, capsys, restore_app_env):
         app = AppBase('test_python_logging_params_dict_basic_from_ini', multi_threading=True)
