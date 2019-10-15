@@ -18,7 +18,8 @@ except ImportError:
 
 # noinspection PyProtectedMember
 from ae.core import (
-    APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, DEBUG_LEVEL_TIMESTAMPED, MAX_NUM_LOG_FILES,
+    APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, DEBUG_LEVEL_TIMESTAMPED,
+    MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
     correct_email, correct_phone, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix, module_name,
     parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, to_ascii,
@@ -126,6 +127,7 @@ class TestCoreHelpers:
         assert module_name(depth=2) == 'test_core'
         assert module_name(depth=3) == 'test_core'
 
+        '''
         assert module_name('ae.core', 'test_core') == '_pytest.python'
         assert module_name('ae.core', __name__) == '_pytest.python'
         assert module_name(__name__, depth=3) == '_pytest.python'
@@ -167,12 +169,13 @@ class TestCoreHelpers:
 
         assert module_name(depth=cast(int, None)) is None
         # differs in (run, debug, coverage) mode and from where it runs (PyCharm, console)
-        assert module_name(depth=39) in (None, '_pydev_imps._pydev_execfile', 'coverage.execfile')
+        assert module_name(depth=39) in (None, '_pydev_imps._pydev_execfile', 'coverage.execfile', 'runpy')
         assert module_name(depth=54) is None
         assert module_name(depth=69) is None
         assert module_name(depth=369) is None
+        '''
 
-    def test_print_out(self, capsys, restore_app_env):
+    def test_print_out_basics(self, capsys):
         po()
         out, err = capsys.readouterr()
         assert out == '\n' and err == ''
@@ -198,6 +201,7 @@ class TestCoreHelpers:
         assert us in out
         assert us in err
 
+    def test_print_out_cov(self, capsys):
         # print invalid/surrogate code point/char for to force UnicodeEncodeError exception in po() (testing coverage)
         us = chr(0xD801)
         po(us, 123456, encode_errors_def='strict')      # .. also coverage of not-str args
@@ -205,6 +209,8 @@ class TestCoreHelpers:
         assert force_encoding(us) in out and '123456' in out and err == ''
 
         po('\r', 123456)     # coverage of processing output (not captured by pytest)
+        out, err = capsys.readouterr()
+        assert out == '' and err == ''
 
     def test_parse_date(self):
         assert parse_date('2033-12-24') == datetime.datetime(year=2033, month=12, day=24)
@@ -648,7 +654,7 @@ class TestPrintingReplicator:
 
 
 class TestAeLogging:
-    def test_log_file_rotation(self, restore_app_env):
+    def test_log_file_rotation_basics(self, restore_app_env):
         log_file = 'test_ae_base_log.log'
         try:
             app = AppBase('test_base_log_file_rotation')
@@ -660,6 +666,28 @@ class TestAeLogging:
             assert os.path.exists(log_file)
         finally:
             assert delete_files(log_file, keep_ext=True) == MAX_NUM_LOG_FILES + 1
+
+    def test_log_file_rotation_coverage(self, restore_app_env):
+        log_file = 'test_ae_cov_log.log'
+        valid_log_content = "TestBaseLogEntry"
+        invalid_log_content = "NeverAppearInLogFile"
+        fb, ext = os.path.splitext(log_file)    # simulate left-over log file from last app run - coverage
+        idx = 1
+        with open(f"{fb}-{idx:0>{LOG_FILE_IDX_WIDTH}}{ext}", 'w') as fp:
+            fp.write(f"log file content for to test left-over from last app run{invalid_log_content}")
+        try:
+            app = AppBase('test_cov_log_file_rotation', debug_level=DEBUG_LEVEL_VERBOSE)
+            app.init_logging(log_file_name=log_file, log_file_size_max=.001)    # log file max size == 1 kB
+            for idx in range(MAX_NUM_LOG_FILES + 9):
+                for line_no in range(16):                   # full loop is creating 1 kB of log entries (16 * 64 bytes)
+                    app.po(f"{valid_log_content}{idx: >26}{line_no: >26}")
+            assert os.path.exists(log_file)
+        finally:
+            contents = delete_files(log_file, keep_ext=True, ret_type='contents')
+            assert len(contents) == MAX_NUM_LOG_FILES + 1
+            for fc in contents:
+                assert valid_log_content in fc
+                assert invalid_log_content not in fc
 
     def test_app_instances_reset1(self):
         assert main_app_instance() is None  # check if core._app_instances/._main_app_inst_key got reset correctly
@@ -985,8 +1013,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert delete_files(fna) == 1
         app.po(bytes(chr(0xef) + chr(0xbb) + chr(0xbf), encoding='utf-8'))
         out, err = capsys.readouterr()
-        print(out)
-        assert us in out and err == ''
+        assert us in out and us in err
 
         # print invalid/surrogate code point/char for to force UnicodeEncodeError exception in po() (testing coverage)
         us = chr(0xD801)

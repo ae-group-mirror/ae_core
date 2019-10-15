@@ -98,23 +98,26 @@ Basic Usage
 
 At the top of your python application main file/module create an instance of the class :class:`AppBase`::
 
-    '' '' '' docstring of your application main module '' '' ''
-    from console import AppBase
+    \"\"\"  docstring at the top of the main module of your application  \"\"\"
+    from ae.core import AppBase
 
     __version__ = '1.2.3'
 
     ca = AppBase()
 
-In the above example the :class:`AppBase` instance will automatically use the docstring of your application
-main module as application title and the string in the module variable __version___ as application version.
-Alternatively you can specify your application title and version string by passing them as the first two
+In the above example the :class:`AppBase` instance will automatically use the docstring of the
+module as application title and the string in the module variable __version___ as application version.
+To overwrite these defaults pass your application title and version string in the
 arguments (:paramref:`~AppBase.app_title` and :paramref:`~AppBase.app_version`)
-to the instantiation call of :class:`AppBase`.
+to the instantiation call of :class:`AppBase`::
 
-:class:`AppBase` also determines automatically the name/id of your application from the file base name
-of your application main/startup module (e.g. <app_name>.py or main.py). Also other application environment
-vars/options (like e.g. the application startup folder path and the current working directory path) will be
-automatically initialized for your application.
+    ca = AppBase("title of this app instance", app_version='3.2.1')
+
+Other automatically initialized instance attributes of :class:`AppBase` are documented underneath
+in the :class:`class docstring <AppBase>`. They include e.g.
+the :attr:`date and time when the instance got created <AppBase.startup_beg>`,
+the :attr:`name/id of this application instance <AppBase.app_name>` or
+the :attr:`startup folder path <AppBase._app_path>`.
 
 
 Application Class Hierarchy
@@ -128,8 +131,7 @@ configuration options and variables to it. So in your console application it is 
 use instances of :class:`~ae.console.ConsoleApp` instead of :class:`AppBase`.
 
 For applications with an GUI use instead one of the classes :class:`~ae.kivy_app.KivyApp`,
-:class:`~ae.enaml_app.EnamlApp` or :class:`~ae.dabo_app.DaboApp`. These app GUI classes
-inherit all functionality from :class:`~ae.console.ConsoleApp` and :class:`AppBase`.
+:class:`~ae.enaml_app.EnamlApp` or :class:`~ae.dabo_app.DaboApp`.
 
 
 Application Logging
@@ -258,7 +260,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List
 
 
-__version__ = '0.0.12'                           #: actual version of this portion/package/module
+__version__ = '0.0.13'                           #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -1245,7 +1247,7 @@ class AppBase:
                 self._std_out_err_redirection(True)
                 self._flush_and_close_log_buf()
                 new_stream = self._log_file_stream
-            elif self.suppress_stdout and not self._nul_std_out:
+            elif self.suppress_stdout and not self._nul_std_out:    # pragma: no cover/_std_out_err_redirection does it
                 old_stream = sys.stdout
                 sys.stdout = self._nul_std_out = new_stream = open(os.devnull, 'w')
 
@@ -1268,9 +1270,9 @@ class AppBase:
         """
         if file is None and main_app_instance() is not self:
             with log_file_lock:
-                stream = self._log_buf_stream or self._log_file_stream
-            if stream:
-                kwargs['file'] = stream
+                file = self._log_buf_stream or self._log_file_stream
+        if file:
+            kwargs['file'] = file
         if 'app' not in kwargs:
             kwargs['app'] = self
         print_out(*objects, **kwargs)
@@ -1328,7 +1330,7 @@ class AppBase:
             app_inst_lock.release()
         self._shut_down = True
         if is_main_app_instance and exit_code is not None:
-            sys.exit(exit_code)
+            sys.exit(exit_code)             # pragma: no cover (would break/cancel test run)
 
     def _std_out_err_redirection(self, redirect: bool):
         """ enable/disable the redirection of the standard output/error TextIO streams if needed.
@@ -1342,7 +1344,7 @@ class AppBase:
                 if not self.suppress_stdout:
                     std_out = ori_std_out
                 elif self._nul_std_out and not self._nul_std_out.closed:
-                    std_out = self._nul_std_out
+                    std_out = self._nul_std_out     # pragma: no cover - should never happen
                 else:
                     std_out = self._nul_std_out = open(os.devnull, 'w')
                 sys.stdout = _PrintingReplicator(sys_out_obj=std_out)
@@ -1355,7 +1357,7 @@ class AppBase:
         if is_main_app_instance or redirect:
             faulthandler.enable(file=sys.stdout)
         elif is_main_app_instance and not redirect and faulthandler.is_enabled():
-            faulthandler.disable()
+            faulthandler.disable()  # pragma: no cover (would need to cancel/break test runs)
 
     def _append_eof_and_flush_file(self, stream_file: TextIO, stream_name: str):
         """ add special end-of-file marker and flush the internal buffers to the file stream.
@@ -1369,7 +1371,7 @@ class AppBase:
                 print(file=stream_file)
                 if self.debug_level:
                     print('EoF', file=stream_file)
-            except Exception as ex:
+            except Exception as ex:     # pragma: no cover
                 self.po(f"Ignorable {stream_name} end-of-file marker exception={ex}", logger=_logger)
 
             stream_file.flush()
@@ -1406,8 +1408,8 @@ class AppBase:
     def _rename_log_file(self):
         """ rename rotating log file while keeping first/startup log and log file count below :data:`MAX_NUM_LOG_FILE`.
         """
-        file_path, file_ext = os.path.splitext(self._log_file_name)
-        dfn = file_path + f"-{self._log_file_index:0>{LOG_FILE_IDX_WIDTH}}" + file_ext
+        file_base, file_ext = os.path.splitext(self._log_file_name)
+        dfn = f"{file_base}-{self._log_file_index:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
         if os.path.exists(dfn):
             os.remove(dfn)                              # remove old log file from previous app run
         if os.path.exists(self._log_file_name):         # prevent errors after log file error or unit test cleanup
@@ -1416,7 +1418,7 @@ class AppBase:
         self._log_file_index += 1
         if self._log_file_index > MAX_NUM_LOG_FILES:    # use > instead of >= for to always keep first/startup log file
             first_idx = self._log_file_index - MAX_NUM_LOG_FILES
-            dfn = file_path + f"-{first_idx:0>{LOG_FILE_IDX_WIDTH}}" + file_ext
+            dfn = f"{file_base}-{first_idx:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
             if os.path.exists(dfn):
                 os.remove(dfn)
 

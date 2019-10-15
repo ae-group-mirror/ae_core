@@ -29,6 +29,7 @@
       <w>pytest</w>
       <w>readouterr</w>
       <w>readthedocs</w>
+      <w>runpy</w>
       <w>searchbox</w>
       <w>strftime</w>
       <w>strptime</w>
