@@ -2,7 +2,7 @@
 # THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
 # All changes will be deployed automatically to all the portions of this namespace package.
 -->
-# Version 0.0.10 Of ae_core Portion Of ae Namespace Package
+# core Portion Of ae Namespace Package
 
 The portions (modules and sub-packages) of the Application Environment for Python are within
 the `ae` namespace and are providing helper methods and classes for to develop
@@ -11,7 +11,7 @@ full-featured applications with Python.
 
 ## Installation
 
-For to only use this portion in your code type in your command shell:
+For to only use this module in your code type in your command shell:
  
 ```shell script
 pip install ae-core
@@ -35,3 +35,6 @@ the setup extras key `dev` in the above command with `tests` or `docs` respectiv
 More info on the features and usage of this portion are available at
 [ReadTheDocs](https://ae.readthedocs.io/en/latest/_autosummary/ae.core.html#module-ae.core
 "ae_core documentation").
+
+<!-- Common files version 0.0.16 deployed to the ae_core module version 0.0.14.
+-->

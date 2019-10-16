@@ -11,44 +11,11 @@ import glob
 import os
 import re
 import setuptools
-from typing import List, Tuple
+from typing import Dict, List
 
 
-def file_content(file_name: str) -> str:
-    """ returning content of the file specified by file_name arg as string. """
-    with open(file_name) as fp:
-        return fp.read()
-
-
-def patch_templates() -> List[str]:
-    """ convert all ae namespace package templates found in the cwd or underneath to the final files. """
-    patched = list()
-    for fn in glob.glob('**/*.*' + template_extension, recursive=True):
-        content = file_content(fn).format(**globals())
-        with open(fn[:-len(template_extension)], 'w') as fp:
-            fp.write(content)
-        patched.append(fn)
-    return patched
-
-
-def determine_setup_path() -> str:
-    """ check if setup.py got called from portion root or from docs/RTD root. """
-    cwd = os.getcwd()
-    if os.path.exists('setup.py'):      # local build
-        return cwd
-    if os.path.exists('conf.py'):       # RTD build
-        return os.path.abspath('..')
-    raise RuntimeError(f"Neither setup.py nor conf.py found in current working directory {cwd}")
-
-
-def code_file_version(file_name: str) -> str:
-    """ read version of Python code file - from __version__ module variable initialization. """
-    content = file_content(file_name)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
-    if not version_match:
-        raise FileNotFoundError(f"Unable to find version string within {file_name}")
-    return version_match.group(1)
-
+PT_PKG: str = 'sub-package'         #: sub-package portion type
+PT_MOD: str = 'module'              #: module portion type
 
 version_patch_parser = re.compile(r"(^__version__ = ['\"]\d*[.]\d*[.])(\d+)([a-z]*['\"])", re.MULTILINE)
 
@@ -62,45 +29,87 @@ def bump_code_file_patch_number(file_name: str) -> str:
         return f"Empty file {file_name}"
     content, replaced = version_patch_parser.subn(lambda m: m.group(1) + str(int(m.group(2)) + 1) + m.group(3), content)
     if replaced != 1:
-        return f"Variable __version__ found {replaced} times in portion {portion_name} ({file_name})"
+        return f"Variable __version__ found {replaced} times in {file_name}"
     with open(file_name, 'w') as fp:
         fp.write(content)
     return ""
 
 
-def _determine_portion(portion_type='module', portion_end='.py') -> Tuple[str, bool]:
-    """ determine ae namespace package portion (and if it is either a module or a sub-package). """
-    search_module = portion_type == 'module'
-    files = [fn for fn in glob.glob(os.path.join(package_path, '*' + portion_end)) if '__' not in fn]
-    if len(files) > 1:
-        raise RuntimeError(f"More than one {portion_type} found: {files}")
-    if len(files) == 0:
-        if not search_module:
-            raise RuntimeError(f"Neither module nor sub-package found in package path {package_path}")
-        return _determine_portion('sub-package', os.path.sep)
-    return os.path.split(files[0][:-len(portion_end)])[1], search_module
+def code_file_version(file_name: str) -> str:
+    """ read version of Python code file - from __version__ module variable initialization. """
+    content = file_content(file_name)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
+    if not version_match:
+        raise FileNotFoundError(f"Unable to find version string within {file_name}")
+    return version_match.group(1)
 
 
-def _read_package_version(from_module: bool) -> str:
-    """ read version of portion directly from the module or from the __init__.py of the sub-package. """
-    file_name = portion_name + ('.py' if from_module else os.path.sep + '__init__.py')
-    return code_file_version(os.path.join(package_path, file_name))
+def determine_package_vars(portion_root_path: str, portion_type: str = PT_MOD, portion_end: str = '.py'
+                           ) -> Dict[str, str]:
+    """ determine vars of a ae namespace package portion (and if it is either a module or a sub-package). """
+    if os.path.exists(portion_root_path):                   # run/imported by portion repository
+        search_module = portion_type == PT_MOD
+        files = [fn for fn in glob.glob(os.path.join(portion_root_path, '*' + portion_end)) if '__' not in fn]
+        if len(files) > 1:
+            raise RuntimeError(f"More than one {portion_type} found: {files}")
+        if len(files) == 0:
+            if not search_module:
+                raise RuntimeError(f"Neither module nor sub-package found in package path {portion_root_path}")
+            return determine_package_vars(portion_root_path, PT_PKG, os.path.sep)
+        portion_name = os.path.split(files[0][:-len(portion_end)])[1]
+    else:                                                   # imported by namespace root repo
+        portion_type = ''
+        portion_name = "{portion-name}"
+
+    p_vars = dict()
+    p_vars['portion_type'] = portion_type
+    p_vars['portion_name'] = portion_name
+    p_vars['portion_file_name'] = portion_name + (os.path.sep + '__init__.py' if portion_type == PT_PKG else '.py')
+    p_vars['portion_file_path'] = os.path.abspath(os.path.join(portion_root_path, p_vars['portion_file_name']))
+    p_vars['package_name'] = namespace_name + "_" + portion_name
+    p_vars['pip_name'] = namespace_name + "-" + portion_name
+    p_vars['import_name'] = namespace_name + "." + portion_name
+    p_vars['package_version'] = code_file_version(p_vars['portion_file_path']) if portion_type else 'x.y.z'
+    p_vars['root_version'] = 'un.kno.wn' if portion_type else code_file_version(os.path.join(setup_path, 'setup.py'))
+
+    return p_vars
 
 
-namespace_root = 'ae'
-root_len = len(namespace_root)
+def determine_setup_path() -> str:
+    """ check if setup.py got called from portion root or from docs/RTD root. """
+    cwd = os.getcwd()
+    if os.path.exists('setup.py'):      # local build
+        return cwd
+    if os.path.exists('conf.py'):       # RTD build
+        return os.path.abspath('..')
+    raise RuntimeError(f"Neither setup.py nor conf.py found in current working directory {cwd}")
+
+
+def file_content(file_name: str) -> str:
+    """ returning content of the file specified by file_name arg as string. """
+    with open(file_name) as fp:
+        return fp.read()
+
+
+def patch_templates(patch_vars: Dict[str, str], exclude_folder: str = '') -> List[str]:
+    """ convert ae namespace package templates found in the cwd or underneath (except excluded) to the final files. """
+    patched = list()
+    for fn in glob.glob('**/*.*' + template_extension, recursive=True):
+        if not exclude_folder or not fn.startswith(exclude_folder + os.path.sep):
+            content = file_content(fn).format(**patch_vars)
+            with open(fn[:-len(template_extension)], 'w') as fp:
+                fp.write(content)
+            patched.append(fn)
+    return patched
+
+
+namespace_name = 'ae'
+portions_common_root_path = 'portions_common_root'
 template_extension = '.tpl'
 setup_path = determine_setup_path()
-package_path = os.path.join(setup_path, namespace_root)
-if os.path.exists(package_path):
-    portion_name, is_module = _determine_portion()   # run/imported by portion repository
-    package_version = _read_package_version(is_module)
-else:
-    portion_name = '<portion-name>'                 # imported by namespace root repo
-    package_version = 'x.y.z'
-package_name = namespace_root + '_' + portion_name  # results in package name e.g. 'ae_core'
-pip_name = namespace_root + '-' + portion_name                              # e.g. 'ae-core'
-import_name = namespace_root + '.' + portion_name                           # e.g. 'ae.core'
+portion_path = os.path.join(setup_path, namespace_name)
+package_vars = determine_package_vars(portion_path)
+package_name = package_vars['package_name']
 
 requirements_file = os.path.join(setup_path, 'requirements.txt')
 if os.path.exists(requirements_file):
@@ -110,17 +119,23 @@ else:
     dev_require = ['pytest', 'pytest-cov']
 docs_require = [_ for _ in dev_require if _.startswith('sphinx_')]
 tests_require = [_ for _ in dev_require if _.startswith('pytest')]
-portions = [_ for _ in dev_require if _.startswith('ae_')]
-portions_import_names = ("\n" + " " * 4).join([_[:root_len] + '.' + _[root_len+1:] for _ in portions])  # -> index.rst
-portions_pypi_refs_md = "\n".join(f'* [{_}](https://pypi.org/project/{_} "ae namespace portion {_}")' for _ in portions)
+portions_package_names = [_ for _ in dev_require if _.startswith('ae_')]
+
+# provide additional package info for root package templates
+package_vars['portions_common_root_path'] = portions_common_root_path
+package_vars['portions_pypi_refs_md'] = "\n".join(
+    f'* [{_}](https://pypi.org/project/{_} "ae namespace portion {_}")'
+    for _ in portions_package_names)                        # used in ./README.md.tpl
+namespace_len = len(namespace_name)
+package_vars['portions_import_names'] = ("\n" + " " * 4).join(
+    _[:namespace_len] + '.' + _[namespace_len + 1:]
+    for _ in portions_package_names)                        # used in docs/index.rst.tpl
 
 
 if __name__ == "__main__":
-    patch_templates()
-
     setuptools.setup(
         name=package_name,              # pip install name (not the import package name)
-        version=package_version,
+        version=package_vars['package_version'],
         author="Andi Ecker",
         author_email="aecker2@gmail.com",
         description=package_name + " portion of python application environment namespace package",
@@ -129,7 +144,7 @@ if __name__ == "__main__":
         url="https://gitlab.com/ae-group/" + package_name,
         # don't needed for native/implicit namespace packages: namespace_packages=['ae'],
         # packages=setuptools.find_packages(),
-        packages=setuptools.find_namespace_packages(include=[namespace_root]),  # find ae namespace portions
+        packages=setuptools.find_namespace_packages(include=[namespace_name]),  # find ae namespace portions
         python_requires=">=3.6",
         extras_require={
             'docs': docs_require,
