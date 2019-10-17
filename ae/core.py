@@ -44,7 +44,7 @@ by the :class:`~ae.literal.Literal` class for the implementation of dynamically
 determined literal values.
 
 The functions :func:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
-helpful for to inspect the call stack. With them you can easily access the stack frame
+helpful for to inspect the call stack. With them you can easily access the stack frames
 and read e.g. variable values of the callers of your functions/methods. The class
 :class:`AppBase` is using them e.g. for to determine the
 :attr:`version <AppBase.app_version>` and :attr:`title <AppBase.app_title>` of your application.
@@ -107,9 +107,9 @@ At the top of your python application main file/module create an instance of the
 
 In the above example the :class:`AppBase` instance will automatically use the docstring of the
 module as application title and the string in the module variable __version___ as application version.
-To overwrite these defaults pass your application title and version string in the
-arguments (:paramref:`~AppBase.app_title` and :paramref:`~AppBase.app_version`)
-to the instantiation call of :class:`AppBase`::
+To overwrite these defaults pass your application title and version string via the
+arguments :paramref:`~AppBase.app_title` and :paramref:`~AppBase.app_version`
+to the instantiation of :class:`AppBase`::
 
     ca = AppBase("title of this app instance", app_version='3.2.1')
 
@@ -123,8 +123,8 @@ the :attr:`startup folder path <AppBase._app_path>`.
 Application Class Hierarchy
 ...........................
 
-For most use cases you will never need to instantiate from :class:`AppBase` directly - instead you will
-instantiate one of the classes that are inherited from this base class.
+For most use cases you will not instantiate from :class:`AppBase` directly - instead you will
+instantiate one of the extended application classes that are inherited from this base class.
 
 The class :class:`~ae.console.ConsoleApp` e.g. inherits from :class:`AppBase` and is adding
 configuration options and variables to it. So in your console application it is recommended to directly
@@ -138,7 +138,7 @@ Application Logging
 -------------------
 
 Print-outs are an essential tool for the debugging and logging of your application at run-time. In python
-the print-outs are done with the :func:`print` function or the python :mod:`logging` module. These
+the print-outs are done with the :func:`print` function or with the python :mod:`logging` module. These
 print-outs get per default send to the standard output and error streams of your OS and so displayed on
 your system console/shell. The :func:`print_out` function and the :meth:`~AppBase.print_out` method of
 this :mod:`.core` module are adding two more sophisticated ways for print-outs to the console/log-files.
@@ -164,9 +164,14 @@ a log file instead. But even a single log file can get messy to read, especially
 server applications. For that :class:`SubApp` is allowing you to create for each thread a separate
 sub-app instance with its own log file.
 
+Using this module ensures that any crashes or freezes happening in your application will be fully logged.
+Apart from the gracefully handling of :exc:`UnicodeEncodeError` exceptions, the
+:mod:`Python faulthandler <faulthandler>` will be enabled automatically for to also catch
+system errors and to dump a traceback of them to the console and any activated log file.
 
-Enable Ae Log File
-..................
+
+Activate Ae Log File
+....................
 
 .. _ae-log-file:
 
@@ -178,8 +183,8 @@ simply specify the file name of the log file in the :meth:`~AppBase.init_logging
     app.init_logging(log_file_name='my_log_file.log')
 
 
-Enable Ae Logging Features
-..........................
+Activate Ae Logging Features
+............................
 
 For multi-threaded applications you can include the thread-id of the printing thread automatically
 into your log files. For that you have to pass a True value to the
@@ -227,7 +232,7 @@ For to use the debug features of :mod:`~ae.core` you simple have to import the n
 :ref:`debug level constant <debug-level-constants>` for to pass it at instantiation of
 your :class:`AppBase` or :class:`SubApp` class to the :paramref:`~AppBase.debug_level` argument:
 
-    app = AppBase(..., debug_level=DEBUG_LEVEL_ENABLED)     # same for :class:`SubApp`
+    app = AppBase(..., debug_level= :data:`DEBUG_LEVEL_ENABLED`)     # same for :class:`SubApp`
 
 By passing :data:`DEBUG_LEVEL_ENABLED` the print-outs (and log file contents) will be more detailed,
 and even more verbose if you use instead the debug level :data:`DEBUG_LEVEL_VERBOSE`.
@@ -260,7 +265,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List
 
 
-__version__ = '0.0.14'                           #: actual version of this portion/package/module
+__version__ = '0.0.15'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -1158,7 +1163,7 @@ class AppBase:
 
     def init_logging(self, py_logging_params: Optional[Dict[str, Any]] = None, log_file_name: str = "",
                      log_file_size_max: float = LOG_FILE_MAX_SIZE, disable_buffering: bool = False):
-        """ prepare logging: most values will be initialized in self._parse_args() indirectly via logFile config option
+        """ initialize logging system.
 
         :param py_logging_params:       config dict for python logging configuration.
                                         If this dict is not empty then python logging is configured with the
@@ -1166,6 +1171,9 @@ class AppBase:
         :param log_file_name:           default log file name for ae logging (def='' - ae logging disabled).
         :param log_file_size_max:       max. size in MB of ae log file (def=LOG_FILE_MAX_SIZE).
         :param disable_buffering:       pass True to disable ae log buffering at app startup.
+
+        Log files and config values will be initialized as late as possible in :meth:`~AppBase.log_file_check`
+        e.g. indirectly triggered by a request to a config variable via :meth:`~AppBase._parse_args` (like `logFile`).
         """
         with log_file_lock:
             if py_logging_params:                   # init python logging - app is using python logging module
@@ -1357,7 +1365,7 @@ class AppBase:
         if is_main_app_instance or redirect:
             faulthandler.enable(file=sys.stdout)
         elif is_main_app_instance and not redirect and faulthandler.is_enabled():
-            faulthandler.disable()  # pragma: no cover (would need to cancel/break test runs)
+            faulthandler.disable()  # pragma: no cover (badly testable - would cancel/break test runs)
 
     def _append_eof_and_flush_file(self, stream_file: TextIO, stream_name: str):
         """ add special end-of-file marker and flush the internal buffers to the file stream.
@@ -1392,8 +1400,17 @@ class AppBase:
             stream.close()
 
     def _open_log_file(self):
-        """ open the ae log file and ensure that standard output/error streams get redirected.
+        """ open the ae log file with path and file name specified by :attr:`_log_file_name`.
+
+        Tries to create a log sub-folder - if specified in :attr:`_log_file_name` and
+        the folder does not exists (folder creation is limited to one folder level).
+
+        .. note::
+           A already existing file with the same file name will be overwritten (file contents get lost!).
         """
+        log_dir = os.path.dirname(self._log_file_name)
+        if log_dir and not os.path.exists(log_dir):
+            os.mkdir(log_dir)
         self._log_file_stream = open(self._log_file_name, "w", errors=DEF_ENCODE_ERRORS)
 
     def _close_log_file(self):
