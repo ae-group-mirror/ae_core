@@ -20,7 +20,7 @@ mypy:
 
 pylint:
   script:
-    - pylint -d C0301 ae/*.py
+    - pylint -d C0301 -d C0302 -d C0103 ae/*.py
 
 
 pytest:

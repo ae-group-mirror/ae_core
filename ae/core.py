@@ -262,10 +262,9 @@ import weakref
 
 from io import StringIO
 from string import ascii_letters, digits
-from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List
+from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List, cast
 
-
-__version__ = '0.0.16'                          #: actual version of this portion/package/module
+__version__ = '0.0.17'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -455,24 +454,25 @@ def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception],
                 last_node = nodes.pop()
                 if len(nodes) > 0:
                     exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
-                return eval(compile(ast.Expression(last_node.value), "<ast>", 'eval'), glo_vars, loc_vars)
+                # mypy needs getattr() instead of last_node.value
+                return eval(compile(ast.Expression(getattr(last_node, 'value')), "<ast>", 'eval'), glo_vars, loc_vars)
             exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
     except ignored_exceptions:
         pass                            # RETURN None if one of the ignorable exceptions raised in compiling
+    return None                         # mypy needs explicit return statement and value
 
 
 def force_encoding(text: AnyStr, encoding: str = DEF_ENCODING, errors: str = DEF_ENCODE_ERRORS) -> str:
     """ force/ensure the encoding of text (str or bytes) without any UnicodeDecodeError/UnicodeEncodeError.
 
-    :param text:        text as str/byte.
+    :param text:        text as str/bytes.
     :param encoding:    encoding (def= :data:`DEF_ENCODING`).
     :param errors:      encode error handling (def= :data:`DEF_ENCODE_ERRORS`).
 
     :return:            text as str (with all characters checked/converted/replaced for to be encode-able).
     """
-    if isinstance(text, str):
-        text = text.encode(encoding=encoding, errors=errors)
-    return text.decode(encoding=encoding)
+    enc_str: bytes = cast(str, text).encode(encoding=encoding, errors=errors) if isinstance(text, str) else text
+    return enc_str.decode(encoding=encoding)
 
 
 def full_stack_trace(ex: Exception) -> str:
@@ -484,16 +484,19 @@ def full_stack_trace(ex: Exception) -> str:
     ret = f"Exception {ex!r}. Traceback:\n"
 
     tb = sys.exc_info()[2]
-    for item in reversed(inspect.getouterframes(tb.tb_frame)[1:]):
-        ret += f'File "{item[1]}", line {item[2]}, in {item[3]}\n'
-        if item[4]:
-            for line in item[4]:
-                ret += ' '*4 + line.lstrip()
-    for item in inspect.getinnerframes(tb):
-        ret += f'file "{item[1]}", line {item[2]}, in {item[3]}\n'
-        if item[4]:
-            for line in item[4]:
-                ret += ' '*4 + line.lstrip()
+    if tb:
+        for item in reversed(inspect.getouterframes(tb.tb_frame)[1:]):
+            ret += f'File "{item[1]}", line {item[2]}, in {item[3]}\n'
+            lines = item[4]     # mypy does not detect item[]
+            if lines:
+                for line in lines:
+                    ret += ' '*4 + line.lstrip()
+        for item in inspect.getinnerframes(tb):
+            ret += f'file "{item[1]}", line {item[2]}, in {item[3]}\n'
+            lines = item[4]     # mypy does not detect item[]
+            if lines:
+                for line in lines:
+                    ret += ' '*4 + line.lstrip()
     return ret
 
 
@@ -561,7 +564,7 @@ def parse_date(literal: str, *additional_formats: str, replace: Optional[Dict[st
     else:
         l_dt_sep = literal[lp_dt_sep] if lp_dt_sep != -1 else None
         l_time_sep_cnt = literal.count(ti_sep)
-        if not (0 <= l_time_sep_cnt <= 2):
+        if not 0 <= l_time_sep_cnt <= 2:
             return None
 
     if l_dt_sep:
@@ -592,6 +595,7 @@ def parse_date(literal: str, *additional_formats: str, replace: Optional[Dict[st
             if ret_date or ret_date is None and l_dt_sep is None:
                 ret_val = ret_val.date()
             return ret_val
+    return None
 
 
 def round_traditional(num_value: float, num_digits: int = 0) -> float:
@@ -608,14 +612,14 @@ def round_traditional(num_value: float, num_digits: int = 0) -> float:
     return round(num_value + 10 ** (-len(str(num_value)) - 1), num_digits)
 
 
-def sys_env_dict(file: str = __file__) -> dict:
+def sys_env_dict(file: str = __file__) -> Dict[str, Any]:
     """ returns dict with python system run-time environment values.
 
     :param file:    optional file name (def=__file__/ae.core.py).
     :return:        python system run-time environment values like python_ver, argv, cwd, executable, __file__, frozen
                     and bundle_dir.
     """
-    sed = dict()
+    sed: Dict[str, Any] = dict()
     sed['python_ver'] = sys.version
     sed['argv'] = sys.argv
     sed['executable'] = sys.executable
@@ -852,7 +856,8 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
 
     if processing:
         file = ori_std_out
-    elif logger is not None and file is None and (app.py_log_params and main_app != app or main_app.py_log_params):
+    elif logger is not None and file is None and (app and app.py_log_params and main_app != app
+                                                  or main_app and main_app.py_log_params):
         use_py_logger = True
         logger_late_init()
 
@@ -862,7 +867,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     retries = 2
     while retries:
         try:
-            print_strings = map(lambda _: str(_).encode(enc, errors=encode_errors_def).decode(enc), objects)
+            print_strings = tuple(map(lambda _: str(_).encode(enc, errors=encode_errors_def).decode(enc), objects))
             if use_py_logger or _multi_threading_activated:
                 # concatenating objects also prevents fluttered log file content in multi-threading apps
                 # .. see https://stackoverflow.com/questions/3029816/how-do-i-get-a-thread-safe-print-in-python-2-6
@@ -872,11 +877,12 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
                 if end and (not use_py_logger or end != '\n'):
                     print_one_str += end
                     end = ""
-                print_strings = (print_one_str,)
+                print_strings = (print_one_str, )
 
             if use_py_logger:
                 debug_level = app.debug_level if app else DEBUG_LEVEL_VERBOSE
-                logger.log(level=LOGGING_LEVELS[debug_level], msg=print_strings[0])
+                if logger:
+                    logger.log(level=LOGGING_LEVELS[debug_level], msg=print_strings[0])
             else:
                 print(*print_strings, sep=sep, end=end, file=file, flush=flush)
             break
@@ -890,7 +896,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
                 else:
                     obj = to_ascii(obj)
                 fixed_objects.append(obj)
-            objects = fixed_objects
+            objects = tuple(fixed_objects)
             retries -= 1
 
 
@@ -947,7 +953,7 @@ def _register_app_instance(app: 'AppBase'):
         _app_instances[key] = app
 
 
-def _unregister_app_instance(app_key: str) -> 'AppBase':
+def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
     """ unregister/remove :class:`AppBase` instance from within :data:`_app_instances`.
 
     :param app_key:     app key of the instance to remove.
@@ -972,7 +978,8 @@ def _shut_down_sub_app_instances(timeout: Optional[float] = None):
                         of the threading locks of :data:`the ae log file <log_file_lock>` and the :data:`app instances
                         <app_inst_lock>`.
     """
-    blocked = app_inst_lock.acquire(**(dict(blocking=False) if timeout is None else dict(timeout=timeout)))
+    aqc_kwargs: Dict[str, Any] = (dict(blocking=False) if timeout is None else dict(timeout=timeout))
+    blocked = app_inst_lock.acquire(**aqc_kwargs)
     main_app = main_app_instance()
     for app in list(_app_instances.values()):   # list is needed because weak ref dict get changed in loop
         if app is not main_app:
@@ -991,15 +998,16 @@ class _PrintingReplicator:
         """
         self.sys_out_obj = sys_out_obj
 
-    def write(self, message: AnyStr) -> None:
+    def write(self, any_str: AnyStr) -> None:
         """ write string to ae logging and standard output streams.
 
         Automatically suppressing UnicodeEncodeErrors if console/shell or log file has different encoding
         by forcing re-encoding with DEF_ENCODE_ERRORS.
 
-        :param message:     string to output.
+        :param any_str:     string to output.
         """
-        app_streams = list()
+        message = cast(bytes, any_str).decode() if isinstance(any_str, bytes) else any_str
+        app_streams: List[Tuple[Optional[AppBase], TextIO]] = list()
         with log_file_lock, app_inst_lock:
             for app in list(_app_instances.values()):
                 stream = app.log_file_check(app.active_log_stream)  # check if log rotation or buf-to-file-switch needed
@@ -1011,8 +1019,8 @@ class _PrintingReplicator:
             if message and message[0] != '\n' and message[-1] == '\n':
                 message = '\n' + message[:-1]
             log_lines = message.split('\n')
-            for app, stream in app_streams:
-                line_prefix = '\n' + (app.log_line_prefix() if app else '')
+            for app_or_none, stream in app_streams:
+                line_prefix = '\n' + (app_or_none.log_line_prefix() if app_or_none else '')
                 app_msg = line_prefix.join(log_lines)
                 try:
                     stream.write(app_msg)
@@ -1052,7 +1060,8 @@ def _join_app_threads(timeout: Optional[float] = None):
         if t is not main_thread:
             po(f"  **  joining thread id <{t.ident: >6}> name={t.getName()}", logger=_logger)
             t.join(timeout)
-            _app_threads.pop(t.ident)
+            if t.ident is not None:
+                _app_threads.pop(t.ident)
     _deactivate_multi_threading()
 
 
@@ -1108,11 +1117,11 @@ class AppBase:
         self._app_path: str = os.path.dirname(path_name_ext)    #: path to folder of your main app code file
 
         if not app_title:
-            app_title = stack_var('__doc__')
+            app_title = stack_var('__doc__') or ""
         if not app_name:
             app_name = os.path.splitext(app_file_name)[0]
         if not app_version:
-            app_version = stack_var('__version__')
+            app_version = stack_var('__version__') or ""
 
         self.app_title: str = app_title                         #: title/description of this app instance
         self.app_name: str = app_name                           #: name of this app instance
@@ -1128,7 +1137,7 @@ class AppBase:
             self._log_buf_stream: Optional[StringIO] = None     #: log file buffer stream instance
             self._log_file_stream: Optional[TextIO] = None      #: log file stream instance
             self._log_file_index: int = 0                       #: log file index (for rotating logs)
-            self._log_file_size_max: int = LOG_FILE_MAX_SIZE    #: maximum log file size in MBytes (rotating log files)
+            self._log_file_size_max: float = LOG_FILE_MAX_SIZE  #: maximum log file size in MBytes (rotating log files)
             self._log_file_name: str = ""                       #: log file name
             self._nul_std_out: Optional[TextIO] = None          #: logging null stream
             self.py_log_params: Dict[str, Any] = dict()         #: dict of config parameters for py logging
@@ -1299,7 +1308,7 @@ class AppBase:
         """
         if self._shut_down:
             return
-        aqc_kwargs = dict(blocking=False) if timeout is None else dict(timeout=timeout)
+        aqc_kwargs: Dict[str, Any] = dict(blocking=False) if timeout is None else dict(timeout=timeout)
         is_main_app_instance = main_app_instance() is self
         force = is_main_app_instance and exit_code      # prevent deadlock on app error exit/shutdown
 
@@ -1355,8 +1364,8 @@ class AppBase:
                     std_out = self._nul_std_out     # pragma: no cover - should never happen
                 else:
                     std_out = self._nul_std_out = open(os.devnull, 'w')
-                sys.stdout = _PrintingReplicator(sys_out_obj=std_out)
-                sys.stderr = _PrintingReplicator(sys_out_obj=ori_std_err)
+                sys.stdout = cast(TextIO, _PrintingReplicator(sys_out_obj=std_out))
+                sys.stderr = cast(TextIO, _PrintingReplicator(sys_out_obj=ori_std_err))
         else:
             if is_main_app_instance:
                 sys.stderr = ori_std_err
@@ -1448,4 +1457,3 @@ class SubApp(AppBase):
 
     All members of this class are documented at the :class:`AppBase` class.
     """
-    pass
