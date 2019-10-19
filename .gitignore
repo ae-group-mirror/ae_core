@@ -4,6 +4,7 @@ docs/_autosummary/
 docs/_modules/
 docs/_sources/
 docs/_static/
+logs/
 
 
 # Created by https://www.gitignore.io/api/python

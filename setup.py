@@ -66,11 +66,12 @@ def determine_package_vars(portion_root_path: str, portion_type: str = PT_MOD, p
     p_vars['portion_name'] = portion_name
     p_vars['portion_file_name'] = portion_name + (os.path.sep + '__init__.py' if portion_type == PT_PKG else '.py')
     p_vars['portion_file_path'] = os.path.abspath(os.path.join(portion_root_path, p_vars['portion_file_name']))
-    p_vars['package_name'] = namespace_name + "_" + portion_name
-    p_vars['pip_name'] = namespace_name + "-" + portion_name
-    p_vars['import_name'] = namespace_name + "." + portion_name
+    p_vars['package_name'] = f"{namespace_name}_{portion_name}"
+    p_vars['pip_name'] = f"{namespace_name}-{portion_name}"
+    p_vars['import_name'] = f"{namespace_name}.{portion_name}"
     p_vars['package_version'] = code_file_version(p_vars['portion_file_path']) if portion_type else 'x.y.z'
     p_vars['root_version'] = 'un.kno.wn' if portion_type else code_file_version(os.path.join(setup_path, 'setup.py'))
+    p_vars['repo_url_root'] = f"https://gitlab.com/{namespace_name}-group/"
 
     return p_vars
 
@@ -110,6 +111,7 @@ setup_path = determine_setup_path()
 portion_path = os.path.join(setup_path, namespace_name)
 package_vars = determine_package_vars(portion_path)
 package_name = package_vars['package_name']
+repo_url_root = package_vars['repo_url_root']
 
 requirements_file = os.path.join(setup_path, 'requirements.txt')
 if os.path.exists(requirements_file):
@@ -141,7 +143,7 @@ if __name__ == "__main__":
         description=package_name + " portion of python application environment namespace package",
         long_description=file_content("README.md"),
         long_description_content_type="text/markdown",
-        url="https://gitlab.com/ae-group/" + package_name,
+        url=f"{repo_url_root}{package_name}",
         # don't needed for native/implicit namespace packages: namespace_packages=['ae'],
         # packages=setuptools.find_packages(),
         packages=setuptools.find_namespace_packages(include=[namespace_name]),  # find ae namespace portions

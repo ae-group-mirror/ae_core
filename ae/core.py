@@ -265,7 +265,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List
 
 
-__version__ = '0.0.15'                          #: actual version of this portion/package/module
+__version__ = '0.0.16'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
