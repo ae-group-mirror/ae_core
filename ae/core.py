@@ -264,7 +264,7 @@ from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List, cast
 
-__version__ = '0.0.17'                          #: actual version of this portion/package/module
+__version__ = '0.0.18'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -330,18 +330,18 @@ def correct_email(email: str, changed: bool = False, removed: Optional[List[str]
     comment = ''
     last_ch = ''
     ch_before_comment = ''
-    for idx, ch in enumerate(email):
-        if ch.islower():
+    for idx, char in enumerate(email):
+        if char.islower():
             all_upper_case = False
         next_ch = email[idx + 1] if idx + 1 < domain_end_idx else ''
         if in_comment:
-            comment += ch
-            if ch == ')':
+            comment += char
+            if char == ')':
                 in_comment = False
                 removed.append(comment)
                 last_ch = ch_before_comment
             continue
-        elif ch == '(' and not in_quoted_part \
+        if char == '(' and not in_quoted_part \
                 and (idx == 0 or email[idx:].find(')@') >= 0 if in_local_part
                      else idx == domain_beg_idx or email[idx:].find(')') == domain_end_idx - idx):
             comment = str(idx) + ':('
@@ -349,44 +349,45 @@ def correct_email(email: str, changed: bool = False, removed: Optional[List[str]
             in_comment = True
             changed = True
             continue
-        elif ch == '"' \
+        if char == '"' \
                 and (not in_local_part
                      or last_ch != '.' and idx and not in_quoted_part
                      or next_ch not in ('.', '@') and last_ch != '\\' and in_quoted_part):
-            removed.append(str(idx) + ':' + ch)
+            removed.append(str(idx) + ':' + char)
             changed = True
             continue
-        elif ch == '@' and in_local_part and not in_quoted_part:
+
+        if char == '@' and in_local_part and not in_quoted_part:
             in_local_part = False
             domain_beg_idx = idx + 1
-        elif ch in letters_or_digits:  # ch.isalnum():
+        elif char in letters_or_digits:  # ch.isalnum():
             pass  # uppercase and lowercase Latin letters A to Z and a to z (isalnum() includes also umlauts)
-        elif ord(ch) > 127 and in_local_part:
+        elif ord(char) > 127 and in_local_part:
             pass    # international characters above U+007F
-        elif ch == '.' and in_local_part and not in_quoted_part and last_ch != '.' and idx and next_ch != '@':
+        elif char == '.' and in_local_part and not in_quoted_part and last_ch != '.' and idx and next_ch != '@':
             pass    # if not the first or last unless quoted, and does not appear consecutively unless quoted
-        elif ch in ('-', '.') and not in_local_part and (last_ch != '.' or ch == '-') \
+        elif char in ('-', '.') and not in_local_part and (last_ch != '.' or char == '-') \
                 and idx not in (domain_beg_idx, domain_end_idx):
             pass    # if not duplicated dot and not the first or last character in domain part
-        elif (ch in ' (),:;<>@[]' or ch in '\\"' and last_ch == '\\' or ch == '\\' and next_ch == '\\') \
+        elif (char in ' (),:;<>@[]' or char in '\\"' and last_ch == '\\' or char == '\\' and next_ch == '\\') \
                 and in_quoted_part:
             pass    # in quoted part and in addition, a backslash or double-quote must be preceded by a backslash
-        elif ch == '"' and in_local_part:
+        elif char == '"' and in_local_part:
             in_quoted_part = not in_quoted_part
-        elif (ch in "!#$%&'*+-/=?^_`{|}~" or ch == '.'
-              and (last_ch and last_ch != '.' and next_ch != '@' or in_quoted_part)) \
+        elif (char in "!#$%&'*+-/=?^_`{|}~"
+              or char == '.' and (last_ch and last_ch != '.' and next_ch != '@' or in_quoted_part)) \
                 and in_local_part:
             pass    # special characters (in local part only and not at beg/end and no dup dot outside of quoted part)
         else:
-            removed.append(str(idx) + ':' + ch)
+            removed.append(str(idx) + ':' + char)
             changed = True
             continue
 
         if in_local_part:
-            local_part += ch
+            local_part += char
         else:
-            domain_part += ch.lower()
-        last_ch = ch
+            domain_part += char.lower()
+        last_ch = char
 
     if all_upper_case:
         local_part = local_part.lower()
@@ -411,16 +412,16 @@ def correct_phone(phone: str, changed: bool = False, removed: Optional[List[str]
 
     corr_phone = ''
     got_hyphen = False
-    for idx, ch in enumerate(phone or ""):      # allow phone Is None
-        if ch.isdigit():
-            corr_phone += ch
-        elif keep_1st_hyphen and ch == '-' and not got_hyphen:
+    for idx, char in enumerate(phone or ""):      # allow phone Is None
+        if char.isdigit():
+            corr_phone += char
+        elif keep_1st_hyphen and char == '-' and not got_hyphen:
             got_hyphen = True
-            corr_phone += ch
+            corr_phone += char
         else:
-            if ch == '+' and not corr_phone and not phone[idx + 1:].startswith('00'):
+            if char == '+' and not corr_phone and not phone[idx + 1:].startswith('00'):
                 corr_phone = '00'
-            removed.append(str(idx) + ':' + ch)
+            removed.append(str(idx) + ':' + char)
             changed = True
 
     return corr_phone, changed
@@ -482,21 +483,21 @@ def full_stack_trace(ex: Exception) -> str:
     :return:    str with stack trace info.
     """
     ret = f"Exception {ex!r}. Traceback:\n"
-
-    tb = sys.exc_info()[2]
-    if tb:
-        for item in reversed(inspect.getouterframes(tb.tb_frame)[1:]):
+    trace_back = sys.exc_info()[2]
+    if trace_back:
+        def ext_ret(item):
+            """ process traceback frame and add as str to ret """
+            nonlocal ret
             ret += f'File "{item[1]}", line {item[2]}, in {item[3]}\n'
-            lines = item[4]     # mypy does not detect item[]
+            lines = item[4]  # mypy does not detect item[]
             if lines:
                 for line in lines:
-                    ret += ' '*4 + line.lstrip()
-        for item in inspect.getinnerframes(tb):
-            ret += f'file "{item[1]}", line {item[2]}, in {item[3]}\n'
-            lines = item[4]     # mypy does not detect item[]
-            if lines:
-                for line in lines:
-                    ret += ' '*4 + line.lstrip()
+                    ret += ' ' * 4 + line.lstrip()
+
+        for frame in reversed(inspect.getouterframes(trace_back.tb_frame)[1:]):
+            ext_ret(frame)
+        for frame in inspect.getinnerframes(trace_back):
+            ext_ret(frame)
     return ret
 
 
@@ -661,7 +662,7 @@ def stack_frames(depth: int = 1) -> Generator:  # Generator[frame, None, None]
     try:
         while True:
             # noinspection PyProtectedMember
-            yield sys._getframe(depth)
+            yield sys._getframe(depth)          # pylint: disable=protected-access
             depth += 1
     except (TypeError, AttributeError, ValueError):
         pass
@@ -881,7 +882,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
 
             if use_py_logger:
                 debug_level = app.debug_level if app else DEBUG_LEVEL_VERBOSE
-                if logger:
+                if logger:      # mypy insists to have this extra check, although use_py_logger is including logger
                     logger.log(level=LOGGING_LEVELS[debug_level], msg=print_strings[0])
             else:
                 print(*print_strings, sep=sep, end=end, file=file, flush=flush)
@@ -1053,15 +1054,18 @@ def _join_app_threads(timeout: Optional[float] = None):
     """ join/finish all app threads and finally deactivate multi-threading.
 
     :param timeout:     timeout float value in seconds for thread joining (def=None - block/no-timeout).
+
+    .. note::
+       This function has to be called by the main app instance only.
     """
     global _app_threads
     main_thread = threading.current_thread()
-    for t in list(_app_threads.values()):     # threading.enumerate() also includes PyCharm/pytest threads
-        if t is not main_thread:
-            po(f"  **  joining thread id <{t.ident: >6}> name={t.getName()}", logger=_logger)
-            t.join(timeout)
-            if t.ident is not None:
-                _app_threads.pop(t.ident)
+    for app_thread in list(_app_threads.values()):     # threading.enumerate() also includes PyCharm/pytest threads
+        if app_thread is not main_thread:
+            po(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.getName()}", logger=_logger)
+            app_thread.join(timeout)
+            if app_thread.ident is not None:     # mypy needs it because ident is Optional
+                _app_threads.pop(app_thread.ident)
     _deactivate_multi_threading()
 
 
@@ -1354,7 +1358,7 @@ class AppBase:
 
         :param redirect:    pass True to enable or False to disable the redirection.
         """
-        global ori_std_out, ori_std_err
+        global ori_std_out, ori_std_err         # pylint: disable=invalid-name
         is_main_app_instance = main_app_instance() is self
         if redirect:
             if not isinstance(sys.stdout, _PrintingReplicator):  # sys.stdout==ori_std_out not works with pytest/capsys
@@ -1388,12 +1392,12 @@ class AppBase:
                 print(file=stream_file)
                 if self.debug_level:
                     print('EoF', file=stream_file)
-            except Exception as ex:     # pragma: no cover
+            except Exception as ex:     # pragma: no cover - pylint: disable=broad-except
                 self.po(f"Ignorable {stream_name} end-of-file marker exception={ex}", logger=_logger)
 
             stream_file.flush()
 
-        except Exception as ex:
+        except Exception as ex:         # pylint: disable=broad-except
             self.po(f"Ignorable {stream_name} flush exception={ex}", logger=_logger)
 
     def _flush_and_close_log_buf(self):

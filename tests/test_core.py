@@ -789,12 +789,15 @@ class TestAeLogging:
             assert sp + tst_out not in contents[0]
 
     def test_threaded_sub_app_logging(self, restore_app_env):
+        sub_printed = False
+
         def sub_app_po():
             """ test thread function """
-            nonlocal sub
+            nonlocal sub, sub_printed
             sub = SubApp('test_sub_app_thread', app_name=sp)
             sub.init_logging(log_file_name=sp + log_file)
             sub.po(sp + tst_out)
+            sub_printed = True
 
         log_file = 'test_threaded_sub_app_logging.log'
         tst_out = 'print-out to log file'
@@ -806,7 +809,7 @@ class TestAeLogging:
             sub = None
             sub_thread = threading.Thread(target=sub_app_po)
             sub_thread.start()
-            while not sub or not sub.active_log_stream:
+            while not sub_printed:      # NOT ENOUGH fails on gitlab CI: not sub or not sub.active_log_stream:
                 pass  # wait until sub-thread has called init_logging()
             po(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")

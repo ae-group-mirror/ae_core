@@ -9,6 +9,12 @@ before_script:
   - pip install -r requirements.txt -r test_requirements.txt
 
 
+pytest:
+  # stage: test   # default stage
+  script:
+    - python -m pytest --cov=ae tests/
+
+
 flake8:
   # stage: test   # default stage
   script:
@@ -20,13 +26,8 @@ mypy:
 
 pylint:
   script:
-    - pylint -d C0301 -d C0302 -d C0103 ae/*.py
-
-
-pytest:
-  # stage: test   # default stage
-  script:
-    - python -m pytest --cov=ae tests/
+    - pylint --max-line-length=120 ae/*.py
+  allow_failure: true       # pylint is too picky but still useful for manual code smell checks
 
 
 deploy_staging:
@@ -41,5 +42,3 @@ deploy_staging:
     - twine upload --verbose dist/*
   only:
     - master
-  except:
-    - tags

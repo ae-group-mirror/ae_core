@@ -12,6 +12,7 @@
       <w>faulthandler</w>
       <w>genindex</w>
       <w>graphviz</w>
+      <w>ident</w>
       <w>intersphinx</w>
       <w>kivy</w>
       <w>lineno</w>
