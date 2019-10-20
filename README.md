@@ -4,9 +4,18 @@
 -->
 # core Portion Of ae Namespace Package
 
-The portions (modules and sub-packages) of the Application Environment for Python are within
+>The portions (modules and sub-packages) of the Application Environment for Python are within
 the `ae` namespace and are providing helper methods and classes for to develop
 full-featured applications with Python.
+
+[![PyPIVersion](https://img.shields.io/pypi/v/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![GitLabPipeline](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/master?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIImplementation](https://img.shields.io/pypi/implementation/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIPyVersions](https://img.shields.io/pypi/pyversions/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIWheel](https://img.shields.io/pypi/wheel/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIFormat](https://img.shields.io/pypi/format/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIStatus](https://img.shields.io/pypi/status/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIDownloads](https://img.shields.io/pypi/dm/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
 
 
 ## Installation
@@ -39,6 +48,6 @@ More info on the features and usage of this portion are available at
 [ReadTheDocs](https://ae.readthedocs.io/en/latest/_autosummary/ae.core.html#module-ae.core
 "ae_core documentation").
 
-<!-- Common files version 0.0.21 deployed (with 0.0.21)
-     to the ae_core module version 0.0.16.
+<!-- Common files version 0.0.22 deployed (with 0.0.22)
+     to the ae_core module version 0.0.19.
 -->
