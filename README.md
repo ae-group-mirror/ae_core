@@ -48,6 +48,6 @@ More info on the features and usage of this portion are available at
 [ReadTheDocs](https://ae.readthedocs.io/en/latest/_autosummary/ae.core.html#module-ae.core
 "ae_core documentation").
 
-<!-- Common files version 0.0.22 deployed (with 0.0.22)
-     to the ae_core module version 0.0.19.
+<!-- Common files version 0.0.23 deployed (with 0.0.23)
+     to the ae_core module version 0.0.20.
 -->
