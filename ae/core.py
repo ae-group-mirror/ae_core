@@ -12,7 +12,7 @@ For to set the debug level of your application run-time you can use one of the c
 :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`, :data:`DEBUG_LEVEL_VERBOSE`
 or :data:`DEBUG_LEVEL_TIMESTAMPED`. The debug level of your application can be either
 hard-coded in your code or optionally also externally (using the :ref:`config-files`
-or :ref:`config-options` of the module :mod:`ae.console`).
+or :ref:`config-options` of the module :mod:`.console`).
 
 Short names for all debug level constants are provided by the dict :data:`DEBUG_LEVELS`.
 
@@ -40,7 +40,7 @@ of code, they are a great help in making your application code more clear and re
 For the dynamic execution of functions and code blocks the helper functions :func:`try_call`,
 :func:`try_exec` and :func:`exec_with_return` are provided. And :func:`try_eval` is making
 the evaluation of dynamic python expressions much easier. These functions are e.g. used
-by the :class:`~ae.literal.Literal` class for the implementation of dynamically
+by the :class:`~.literal.Literal` class for the implementation of dynamically
 determined literal values.
 
 The functions :func:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
@@ -59,7 +59,7 @@ Two of the bigger helper functions are :func:`correct_email` and :func:`correct_
 which are useful for to check if a string contains a valid email address or phone number. They
 also allow you to automatically correct an email address or a phone number to a valid format.
 More sophisticated helpers for the validation of email addresses, phone numbers and
-post addresses are available in the :mod:`ae.validation` module.
+post addresses are available in the :mod:`.validation` module.
 
 For to encode unicode strings to other codecs the functions :func:`force_encoding` and
 :func:`to_ascii` can be used. The :func:`print_out` function, which is fully compatible to pythons
@@ -126,12 +126,12 @@ Application Class Hierarchy
 For most use cases you will not instantiate from :class:`AppBase` directly - instead you will
 instantiate one of the extended application classes that are inherited from this base class.
 
-The class :class:`~ae.console.ConsoleApp` e.g. inherits from :class:`AppBase` and is adding
+The class :class:`~.console.ConsoleApp` e.g. inherits from :class:`AppBase` and is adding
 configuration options and variables to it. So in your console application it is recommended to directly
-use instances of :class:`~ae.console.ConsoleApp` instead of :class:`AppBase`.
+use instances of :class:`~.console.ConsoleApp` instead of :class:`AppBase`.
 
-For applications with an GUI use instead one of the classes :class:`~ae.kivy_app.KivyApp`,
-:class:`~ae.enaml_app.EnamlApp` or :class:`~ae.dabo_app.DaboApp`.
+For applications with an GUI use instead one of the classes :class:`~.kivy_app.KivyApp`,
+:class:`~.enaml_app.EnamlApp` or :class:`~.dabo_app.DaboApp`.
 
 
 Application Logging
@@ -201,12 +201,12 @@ to your needs you can specify the maximum log file size in MBytes with the argum
 
     app.init_logging(log_file_name='my_log_file.log', log_file_size_max=9.)
 
-By using the :class:`~ae.console.ConsoleApp` class instead of :class:`AppBase` you can
+By using the :class:`~.console.ConsoleApp` class instead of :class:`AppBase` you can
 alternatively store the logging configuration of your application within a
 :ref:`configuration variable <config-variables>` or a
 :ref:`configuration option <config-options>`.
 The order of precedence for to find the appropriate logging configuration of each
-app instance is documented :meth:`here <ae.console.ConsoleApp._init_logging>` .
+app instance is documented :meth:`here <.console.ConsoleApp._init_logging>` .
 
 
 Using Python Logging Module
@@ -228,7 +228,7 @@ instance.
 Application Debugging
 ---------------------
 
-For to use the debug features of :mod:`~ae.core` you simple have to import the needed
+For to use the debug features of :mod:`~.core` you simple have to import the needed
 :ref:`debug level constant <debug-level-constants>` for to pass it at instantiation of
 your :class:`AppBase` or :class:`SubApp` class to the :paramref:`~AppBase.debug_level` argument:
 
@@ -264,7 +264,7 @@ from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List, cast
 
-__version__ = '0.0.20'                          #: actual version of this portion/package/module
+__version__ = '0.0.21'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -823,7 +823,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     :param end:                 finalizing character added to the end of this print-out (def="\\\\n").
                                 Pass \\\\r for to suppress the print-out into :ref:`ae log file <ae-log-file>`
                                 or to any activated python logger
-                                - useful for console/shell processing animation (see :meth:`ae.tcp.TcpServer.run`).
+                                - useful for console/shell processing animation (see :meth:`.tcp.TcpServer.run`).
     :param file:                output stream object to be printed to (def=None which will use standard output streams).
                                 If given then the redirection to all active log files and python logging loggers
                                 will be disabled (even if the :paramref:`~print_out.logger` argument is specified).
@@ -1121,7 +1121,7 @@ class AppBase:
         self._app_path: str = os.path.dirname(path_name_ext)    #: path to folder of your main app code file
 
         if not app_title:
-            app_title = stack_var('__doc__') or ""
+            app_title = stack_var('__doc__', 'ae.core', 'ae.console') or ""
         if not app_name:
             app_name = os.path.splitext(app_file_name)[0]
         if not app_version:
