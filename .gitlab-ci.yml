@@ -12,7 +12,10 @@ before_script:
 pytest:
   # stage: test   # default stage
   script:
-    - python -m pytest --cov=ae tests/
+    - python -m pytest --cov-report html --cov=ae tests/
+  artifacts:
+    paths:
+      - htmlcov/
 
 
 flake8:
