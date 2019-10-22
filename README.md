@@ -4,20 +4,21 @@
 -->
 # core Portion Of ae Namespace Package
 
+[![GitLabPipeline](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/master?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIVersion](https://img.shields.io/pypi/v/ae_core)](https://pypi.org/project/ae-core/#history)
+
 >The portions (modules and sub-packages) of the Application Environment for Python are within
 the `ae` namespace and are providing helper methods and classes for to develop
 full-featured applications with Python.
 
-[![PyPIVersion](https://img.shields.io/pypi/v/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![GitLabPipeline](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/master?logo=python)](https://gitlab.com/ae-group/ae_core)
 [![Coverage](https://ae-group.gitlab.io/ae_core/coverage.svg)](https://ae-group.gitlab.io/ae_core/coverage/ae_core_py.html)
 [![PyLintScore](https://ae-group.gitlab.io/ae_core/pylint.svg)](https://ae-group.gitlab.io/ae_core/pylint.log)
-[![PyPIImplementation](https://img.shields.io/pypi/implementation/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![PyPIPyVersions](https://img.shields.io/pypi/pyversions/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![PyPIWheel](https://img.shields.io/pypi/wheel/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![PyPIFormat](https://img.shields.io/pypi/format/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![PyPIStatus](https://img.shields.io/pypi/status/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![PyPIDownloads](https://img.shields.io/pypi/dm/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
+[![PyPIImplementation](https://img.shields.io/pypi/implementation/ae_core)](https://pypi.org/project/ae-core/)
+[![PyPIPyVersions](https://img.shields.io/pypi/pyversions/ae_core)](https://pypi.org/project/ae-core/)
+[![PyPIWheel](https://img.shields.io/pypi/wheel/ae_core)](https://pypi.org/project/ae-core/)
+[![PyPIFormat](https://img.shields.io/pypi/format/ae_core)](https://pypi.org/project/ae-core/)
+[![PyPIStatus](https://img.shields.io/pypi/status/ae_core)](https://libraries.io/pypi/ae-core)
+[![PyPIDownloads](https://img.shields.io/pypi/dm/ae_core)](https://pypi.org/project/ae-core/#files)
 
 
 ## Installation
@@ -50,6 +51,6 @@ More info on the features and usage of this portion are available at
 [ReadTheDocs](https://ae.readthedocs.io/en/latest/_autosummary/ae.core.html#module-ae.core
 "ae_core documentation").
 
-<!-- Common files version 0.0.25 deployed (with 0.0.25)
-     to the ae_core module version 0.0.24.
+<!-- Common files version 0.0.26 deployed (with 0.0.26)
+     to the ae_core module version 0.0.25.
 -->
