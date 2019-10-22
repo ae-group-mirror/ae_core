@@ -10,8 +10,8 @@ full-featured applications with Python.
 
 [![PyPIVersion](https://img.shields.io/pypi/v/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
 [![GitLabPipeline](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/master?logo=python)](https://gitlab.com/ae-group/ae_core)
-[![Coverage](https://gitlab.com/ae-group/ae_core/-/jobs/artifacts/master/raw/htmlcov/coverage.svg?job=coverage)](https://gitlab.com/ae-group/ae_core/-/jobs/artifacts/master/raw/htmlcov/index.html)
-[![PyLintScore](https://gitlab.com/ae-group/ae_core/-/jobs/artifacts/master/raw/pylint/pylint.svg?job=pylint)](https://gitlab.com/ae-group/ae_core/-/jobs/artifacts/master/raw/pylint/pylint.log?job=pylint)
+[![Coverage](https://ae-group.gitlab.io/ae_core/coverage.svg)](https://ae-group.gitlab.io/ae_core/coverage/ae_core_py.html)
+[![PyLintScore](https://ae-group.gitlab.io/ae_core/pylint.svg)](https://ae-group.gitlab.io/ae_core/pylint.log)
 [![PyPIImplementation](https://img.shields.io/pypi/implementation/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
 [![PyPIPyVersions](https://img.shields.io/pypi/pyversions/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
 [![PyPIWheel](https://img.shields.io/pypi/wheel/ae_core?logo=python?logo=python)](https://gitlab.com/ae-group/ae_core)
@@ -50,6 +50,6 @@ More info on the features and usage of this portion are available at
 [ReadTheDocs](https://ae.readthedocs.io/en/latest/_autosummary/ae.core.html#module-ae.core
 "ae_core documentation").
 
-<!-- Common files version 0.0.24 deployed (with 0.0.24)
-     to the ae_core module version 0.0.22.
+<!-- Common files version 0.0.25 deployed (with 0.0.25)
+     to the ae_core module version 0.0.24.
 -->

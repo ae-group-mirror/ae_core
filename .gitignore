@@ -5,6 +5,7 @@ docs/_modules/
 docs/_sources/
 docs/_static/
 logs/
+coverage.svg
 
 
 # Created by https://www.gitignore.io/api/python
