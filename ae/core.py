@@ -241,8 +241,8 @@ which is also adding the actual date and time to the print-outs and logs.
 
 The debug level can be changed at any time in your application code by directly assigning
 the new debug level to the :attr:`~AppBase.debug_level` attribute. If you prefer to change
-the (here hard-coded) debug levels dynamically, then use the :class:`ConsoleApp` instead
-of :class:`AppBase`, because :class:`ConsoleApp` provides the `debugLevel`
+the (here hard-coded) debug levels dynamically, then use the :class:`~.console.ConsoleApp` instead
+of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides the attr:`~AppBase.debugLevel`
 :ref:`configuration file variable <config-variables>`
 and :ref:`commend line option <config-options>` for
 to specify :ref:`the actual debug level <pre-defined-config-options>` without the need
@@ -264,7 +264,7 @@ from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List, cast
 
-__version__ = '0.0.22'                          #: actual version of this portion/package/module
+__version__ = '0.0.23'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables

@@ -7,15 +7,21 @@ image: python:3.6
 before_script:
   - python --version
   - pip install -r requirements.txt -r test_requirements.txt
+  - pip install pylint-exit anybadge coverage-badge
 
 
 pytest:
-  # stage: test   # default stage
   script:
     - python -m pytest --cov-report html --cov=ae tests/
+    - coverage report | tee coverage.txt
+    # - anybadge --label=coverage --file=coverage.svg --value=69 --suffix='%%' 50=red 60=orange 80=yellow 100=green
+    - coverage-badge -o coverage.svg -f
+  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
   artifacts:
     paths:
       - htmlcov/
+      - coverage.txt
+      - coverage.svg
 
 
 flake8:
@@ -28,11 +34,6 @@ mypy:
     - python -m mypy ae
 
 pylint:
-  allow_failure: true       # pylint is too picky but still useful for manual code smell checks
-  before_script:
-    - python --version
-    - pip install -r requirements.txt -r test_requirements.txt    # global before_script not executed if job has one too
-    - pip install pylint-exit anybadge
   script:
     - mkdir ./pylint
     - pylint --output-format=text --max-line-length=120 ae | tee ./pylint/pylint.log || pylint-exit $?
@@ -54,5 +55,24 @@ deploy_staging:
      - python setup.py sdist
   script:
     - twine upload --verbose dist/*
+  only:
+    - master
+
+
+pages:
+  stage: deploy
+  dependencies:
+    - pytest
+    - pylint
+  script:
+    # - mkdir public/
+    - mv htmlcov/ public/
+    - mv coverage.txt public/
+    - mv coverage.svg public/
+    - mv pylint/pylint.svg public/
+    - mv pylint/pylint.log public/
+  artifacts:
+    paths:
+      - public
   only:
     - master
