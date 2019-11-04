@@ -5,7 +5,7 @@
 
 This file get run by each portion of this namespace package for builds (sdist/bdist_wheels)
 and installation (install); also gets imported by the root package (for the globals defined
-here) for documentation build (docs/conf.py), common file deploys and commit preparation.
+here) for documentation builds (docs/conf.py), common file deploys and commit preparations.
 """
 import glob
 import os
@@ -16,6 +16,10 @@ from typing import Dict, List
 
 PT_PKG: str = 'sub-package'         #: sub-package portion type
 PT_MOD: str = 'module'              #: module portion type
+PY_EXT = '.py'
+
+REQ_FILE_NAME = 'requirements.txt'
+REQ_TEST_FILE_NAME = 'test_requirements.txt'
 
 version_patch_parser = re.compile(r"(^__version__ = ['\"]\d*[.]\d*[.])(\d+)([a-z]*['\"])", re.MULTILINE)
 
@@ -44,7 +48,7 @@ def code_file_version(file_name: str) -> str:
     return version_match.group(1)
 
 
-def determine_package_vars(portion_root_path: str, portion_type: str = PT_MOD, portion_end: str = '.py'
+def determine_package_vars(portion_root_path: str, portion_type: str = PT_MOD, portion_end: str = PY_EXT
                            ) -> Dict[str, str]:
     """ determine vars of a ae namespace package portion (and if it is either a module or a sub-package). """
     if os.path.exists(portion_root_path):                   # run/imported by portion repository
@@ -64,14 +68,16 @@ def determine_package_vars(portion_root_path: str, portion_type: str = PT_MOD, p
     p_vars = dict()
     p_vars['portion_type'] = portion_type
     p_vars['portion_name'] = portion_name
-    p_vars['portion_file_name'] = portion_name + (os.path.sep + '__init__.py' if portion_type == PT_PKG else '.py')
+    p_vars['portion_file_name'] = portion_name + (os.path.sep + '__init__.py' if portion_type == PT_PKG else PY_EXT)
     p_vars['portion_file_path'] = os.path.abspath(os.path.join(portion_root_path, p_vars['portion_file_name']))
     p_vars['package_name'] = f"{namespace_name}_{portion_name}"
     p_vars['pip_name'] = f"{namespace_name}-{portion_name}"
     p_vars['import_name'] = f"{namespace_name}.{portion_name}"
     p_vars['package_version'] = code_file_version(p_vars['portion_file_path']) if portion_type else 'x.y.z'
     p_vars['root_version'] = 'un.kno.wn' if portion_type else code_file_version(os.path.join(setup_path, 'setup.py'))
-    p_vars['repo_url_root'] = f"https://gitlab.com/{namespace_name}-group/"
+    p_vars['repo_root'] = f"https://gitlab.com/{namespace_name}-group"
+    p_vars['repo_pages'] = "https://ae-group.gitlab.io"
+    p_vars['pypi_root'] = "https://pypi.org/project"
 
     return p_vars
 
@@ -111,22 +117,25 @@ setup_path = determine_setup_path()
 portion_path = os.path.join(setup_path, namespace_name)
 package_vars = determine_package_vars(portion_path)
 package_name = package_vars['package_name']
-repo_url_root = package_vars['repo_url_root']
+repo_root = package_vars['repo_root']
 
-requirements_file = os.path.join(setup_path, 'requirements.txt')
+dev_require = list()
+requirements_file = os.path.join(setup_path, REQ_FILE_NAME)
 if os.path.exists(requirements_file):
-    dev_require = [_ for _ in file_content(requirements_file).strip().split('\n')
-                   if not _.startswith('#')]
-else:
-    dev_require = ['pytest', 'pytest-cov']
+    dev_require.extend(_ for _ in file_content(requirements_file).strip().split('\n') if not _.startswith('#'))
 docs_require = [_ for _ in dev_require if _.startswith('sphinx_')]
-tests_require = [_ for _ in dev_require if _.startswith('pytest')]
+install_require = [_ for _ in dev_require if not _.startswith('sphinx_')]
 portions_package_names = [_ for _ in dev_require if _.startswith('ae_')]
+
+tests_require = list()
+requirements_file = os.path.join(setup_path, REQ_TEST_FILE_NAME)
+if os.path.exists(requirements_file):
+    tests_require.extend(_ for _ in file_content(requirements_file).strip().split('\n') if not _.startswith('#'))
 
 # provide additional package info for root package templates
 package_vars['portions_common_root_path'] = portions_common_root_path
 package_vars['portions_pypi_refs_md'] = "\n".join(
-    f'* [{_}](https://pypi.org/project/{_} "ae namespace portion {_}")'
+    f'* [{_}]({package_vars["pypi_root"]}/{_} "ae namespace portion {_}")'
     for _ in portions_package_names)                        # used in ./README.md.tpl
 namespace_len = len(namespace_name)
 package_vars['portions_import_names'] = ("\n" + " " * 4).join(
@@ -143,11 +152,12 @@ if __name__ == "__main__":
         description=package_name + " portion of python application environment namespace package",
         long_description=file_content("README.md"),
         long_description_content_type="text/markdown",
-        url=f"{repo_url_root}{package_name}",
+        url=f"{repo_root}/{package_name}",
         # don't needed for native/implicit namespace packages: namespace_packages=['ae'],
         # packages=setuptools.find_packages(),
         packages=setuptools.find_namespace_packages(include=[namespace_name]),  # find ae namespace portions
         python_requires=">=3.6",
+        install_requires=install_require,
         extras_require={
             'docs': docs_require,
             'tests': tests_require,

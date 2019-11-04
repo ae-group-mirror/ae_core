@@ -6,8 +6,10 @@ docs/_sources/
 docs/_static/
 logs/
 coverage.svg
+mypy_report/
 .*.cfg
 .*.ini
+.idea/workspace.xml
 
 
 # Created by https://www.gitignore.io/api/python
