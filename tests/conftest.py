@@ -1,5 +1,5 @@
 """ fixtures for this ae namespace portion.
-# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE NAMESPACE ROOT PACKAGE. CHANGES HAVE TO BE DONE THERE.
 # All changes will be deployed automatically to all the portions of this namespace package.
 """
 import os

@@ -1,14 +1,15 @@
 """ common setup for root and portions (modules or sub-packages) of the ae namespace package.
 
-# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE AE ROOT PACKAGE. ANY CHANGES SHOULD BE DONE THERE.
+# THIS FILE IS EXCLUSIVELY MAINTAINED IN THE NAMESPACE ROOT PACKAGE. CHANGES HAVE TO BE DONE THERE.
 # All changes will be deployed automatically to all the portions of this namespace package.
 
-This file get run by each portion of this namespace package for builds (sdist/bdist_wheels)
+This file get run by each portion of this namespace package for builds (sdist/bdist_wheel)
 and installation (install); also gets imported by the root package (for the globals defined
 here) for documentation builds (docs/conf.py), common file deploys and commit preparations.
 """
 import glob
 import os
+import pprint
 import re
 import setuptools
 from typing import Dict, List
@@ -66,6 +67,7 @@ def determine_package_vars(portion_root_path: str, portion_type: str = PT_MOD, p
         portion_name = "{portion-name}"
 
     p_vars = dict()
+    p_vars['namespace_name'] = namespace_name
     p_vars['portion_type'] = portion_type
     p_vars['portion_name'] = portion_name
     p_vars['portion_file_name'] = portion_name + (os.path.sep + '__init__.py' if portion_type == PT_PKG else PY_EXT)
@@ -144,7 +146,7 @@ package_vars['portions_import_names'] = ("\n" + " " * 4).join(
 
 
 if __name__ == "__main__":
-    setuptools.setup(
+    setup_kwargs = dict(
         name=package_name,              # pip install name (not the import package name)
         version=package_vars['package_version'],
         author="Andi Ecker",
@@ -182,3 +184,7 @@ if __name__ == "__main__":
             'development',
         ]
     )
+    print("#  EXECUTING SETUPTOOLS SETUP #################################")
+    print(pprint.pformat(setup_kwargs, indent=3, width=75, compact=True))
+    setuptools.setup(**setup_kwargs)
+    print("#  FINISHED SETUPTOOLS SETUP  #################################")
