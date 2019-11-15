@@ -264,7 +264,7 @@ from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List, cast
 
-__version__ = '0.0.27'                          #: actual version of this portion/package/module
+__version__ = '0.0.28'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -290,6 +290,8 @@ LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.ERROR, DEBUG_LEV
                                   DEBUG_LEVEL_VERBOSE: logging.INFO, DEBUG_LEVEL_TIMESTAMPED: logging.DEBUG}
 """ association between ae debug levels and python logging levels.
 """
+
+HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidden in print/repr output (not if verbose)
 
 
 def correct_email(email: str, changed: bool = False, removed: Optional[List[str]] = None) -> Tuple[str, bool]:
