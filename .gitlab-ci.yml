@@ -55,7 +55,7 @@ deploy_staging:
     TWINE_USERNAME: $PYPI_USERNAME
     TWINE_PASSWORD: $PYPI_PASSWORD
   before_script:
-     - pip install --upgrade twine wheel
+     - pip install --upgrade twine wheel de_core
      - python setup.py sdist bdist_wheel
   script:
     - twine upload --verbose dist/*
