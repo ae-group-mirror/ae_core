@@ -9,6 +9,7 @@ import sys
 import textwrap
 import threading
 from typing import cast
+from types import FunctionType, ModuleType
 
 import pytest
 try:
@@ -21,7 +22,8 @@ from ae.core import (
     APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, DEBUG_LEVEL_TIMESTAMPED,
     MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
-    correct_email, correct_phone, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix, module_name,
+    correct_email, correct_phone, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix,
+    module_function, module_name,
     parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, to_ascii,
     try_call, try_eval, try_exec,
     AppBase, _PrintingReplicator, SubApp)
@@ -111,6 +113,74 @@ class TestCoreHelpers:
         assert hide_dup_line_prefix(l2, l1) == " " * len(l1)
         l2 = l1[:3] + l1
         assert hide_dup_line_prefix(l1, l2) == " " * 3 + l1
+
+    def test_module_function_not_exists(self):
+        """ first test with non-existing module, second test with non-existing function """
+        entry_point = 'test_module_name:test_module_func'
+        ret = module_function(entry_point)
+        assert ret == (None, None, None)
+
+        module_path = 'tests'
+        module_file = os.path.join(module_path, entry_point.split(':')[0] + '.py')
+        with open(module_file, 'w') as file_handle:
+            file_handle.write("""def some_func(*args, **kwargs):\n    pass\n""")
+        try:
+            ret = module_function(entry_point, module_path=module_path)
+            assert ret[0]
+            assert type(ret[0]) is ModuleType
+            assert ret[1] is None
+            assert ret[2] is None
+        finally:
+            if os.path.exists(module_file):
+                os.remove(module_file)
+
+    def test_module_function_with_args(self):
+        module_path = 'tests'
+        entry_point = 'test_module_name:test_module_func'
+        mod_name, func_name = entry_point.split(':')
+        module_file = os.path.join(module_path, mod_name + '.py')
+        with open(module_file, 'w') as file_handle:
+            file_handle.write(f"""def {func_name}(*args, **kwargs):\n    return args, kwargs\n""")
+        try:
+            args = (1, '2')
+            kwargs = dict(kwarg1=1, kwarg2='2')
+            ret = module_function(entry_point, *args, module_path=module_path, **kwargs)
+            assert ret[0]
+            assert type(ret[0]) is ModuleType
+            assert ret[1]
+            assert type(ret[1]) is FunctionType
+            assert ret[2]
+            assert ret[2][0] == args
+            assert ret[2][1] == kwargs
+        finally:
+            if os.path.exists(module_file):
+                os.remove(module_file)
+
+    def test_module_function_wrong_args(self):
+        module_path = 'tests'
+        entry_point = 'test_module_name:test_module_func'
+        mod_name, func_name = entry_point.split(':')
+        module_file = os.path.join(module_path, mod_name + '.py')
+        with open(module_file, 'w') as file_handle:
+            file_handle.write(f"""def {func_name}(arg1, args2, kwarg1='default'):\n    return arg1, arg2, kwarg1\n""")
+        try:
+            args = (1, '2')
+            kwargs = dict(kwarg1=1, kwarg2='2')
+
+            with pytest.raises(TypeError):
+                ret = module_function(entry_point, *args, module_path=module_path, **kwargs)
+
+            ret = module_function(entry_point, *args, module_path=module_path,
+                                  ignored_exceptions=((TypeError, )), **kwargs)
+
+            assert ret[0]
+            assert type(ret[0]) is ModuleType
+            assert ret[1]
+            assert type(ret[1]) is FunctionType
+            assert ret[2] is None
+        finally:
+            if os.path.exists(module_file):
+                os.remove(module_file)
 
     def test_module_name(self):
         assert module_name(cast(str, None)) == 'ae.core'

@@ -37,9 +37,9 @@ Helper Functions
 Although most of the helper functions provided by this module are tiny with only few lines
 of code, they are a great help in making your application code more clear and readable.
 
-For the dynamic execution of functions and code blocks the helper functions :func:`try_call`,
-:func:`try_exec` and :func:`exec_with_return` are provided. And :func:`try_eval` is making
-the evaluation of dynamic python expressions much easier. These functions are e.g. used
+For the dynamic execution of functions and code blocks the helper functions :func:`module_function`, :func:`try_call`,
+:func:`try_exec` and :func:`exec_with_return` are provided. Additionally :func:`try_eval` is making
+the evaluation of dynamic Python expressions much easier. These functions are e.g. used
 by the :class:`~.literal.Literal` class for the implementation of dynamically
 determined literal values.
 
@@ -251,6 +251,8 @@ to change (and re-build) your application code.
 import ast
 import datetime
 import faulthandler
+import importlib.abc
+import importlib.util
 import inspect
 import logging
 import logging.config
@@ -262,9 +264,10 @@ import weakref
 
 from io import StringIO
 from string import ascii_letters, digits
-from typing import Any, AnyStr, Callable, Generator, Dict, Optional, TextIO, Tuple, Union, Type, List, cast
+from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
+from types import FunctionType, ModuleType
 
-__version__ = '0.0.28'                          #: actual version of this portion/package/module
+__version__ = '0.0.29'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -530,6 +533,48 @@ def module_name(*skip_modules: str, depth: int = 1) -> Optional[str]:
     if not skip_modules:
         skip_modules = (__name__,)
     return stack_var('__name__', *skip_modules, depth=depth)
+
+
+def module_function(entry_point: str,
+                    *args,
+                    module_path: str = "", execute_function: bool = True,
+                    ignored_exceptions: Tuple[Type[Exception], ...] = (),
+                    **kwargs
+                    ) -> Tuple[Optional[ModuleType], Optional[FunctionType], Any]:
+    """ check if the function exists in a Python module and optionally call it.
+
+    :param entry_point:         entry point of function in the form <module_name>:<function_name>.
+                                If the module folder is not available in sys.path then you also have to
+                                pass the folder path into the :paramref:`module_path` argument.
+    :param args:                optional arguments passed to the module function.
+    :param module_path:         optional path where the module is situated (only needed if path is not is sys.path).
+    :param execute_function:    optional; pass False to prevent the execution of the module function.
+    :param ignored_exceptions:  tuple of ignored exceptions.
+    :param kwargs:              optional key word arguments passed to the module function.
+    :return:                    tuple of module object, function object and function return value or None if function
+                                didn't get called (:paramref:`execute_function` is False).
+    """
+    module = func = ret = None
+    mod_name, func_name = entry_point.split(':')
+    module_path = os.path.join(module_path, mod_name + '.py')
+    if os.path.exists(module_path):
+        spec = importlib.util.spec_from_file_location(mod_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+
+        # mypy: had to add import (from importlib.abc import Loader) and assert and then also noinspection for PyCharm
+        assert isinstance(spec.loader, importlib.abc.Loader)
+        # noinspection PyUnresolvedReferences
+        spec.loader.exec_module(module)
+
+        func = getattr(module, func_name, None)
+        if func:
+            if execute_function:
+                try:
+                    ret = func(*args, **kwargs)
+                except ignored_exceptions:
+                    pass
+
+    return module, func, ret
 
 
 def parse_date(literal: str, *additional_formats: str, replace: Optional[Dict[str, Any]] = None,

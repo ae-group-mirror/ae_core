@@ -26,7 +26,7 @@ def sys_argv_app_key_restore(tst_app_key):          # needed for tests using sys
 @pytest.fixture
 def restore_app_env():
     """ restore app environment after test run - needed for tests instantiating AppBase/ConsoleApp. """
-    # LOCAL IMPORT because some portions like e.g. ae_systems does not depend/use ae.core
+    # LOCAL IMPORT because a portion may not depend-on/use ae.core
     # noinspection PyProtectedMember
     from ae.core import app_inst_lock, _app_instances, _unregister_app_instance
 
@@ -37,6 +37,14 @@ def restore_app_env():
         app_keys = list(reversed(list(_app_instances.keys())))
         for key in app_keys:
             _unregister_app_instance(key)   # remove app from ae.core app register/dict
+
+
+@pytest.fixture
+def cons_app(restore_app_env):
+    """ provide ConsoleApp instance that will be unregistered automatically """
+    # LOCAL IMPORT because some portions like e.g. ae_core does not depend/use ae.console
+    from ae.console import ConsoleApp
+    yield ConsoleApp()
 
 
 def delete_files(file_name, keep_ext=False, ret_type='count'):
