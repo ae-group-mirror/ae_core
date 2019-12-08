@@ -37,11 +37,14 @@ Helper Functions
 Although most of the helper functions provided by this module are tiny with only few lines
 of code, they are a great help in making your application code more clear and readable.
 
-For the dynamic execution of functions and code blocks the helper functions :func:`module_function`, :func:`try_call`,
+For the dynamic execution of functions and code blocks the helper functions :func:`try_call`,
 :func:`try_exec` and :func:`exec_with_return` are provided. Additionally :func:`try_eval` is making
 the evaluation of dynamic Python expressions much easier. These functions are e.g. used
 by the :class:`~.literal.Literal` class for the implementation of dynamically
 determined literal values.
+
+The function :func:`module_callable` allows you to dynamically determine a pointer to any
+callable object (function, class, ...) in a Python module.
 
 The functions :func:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
 helpful for to inspect the call stack. With them you can easily access the stack frames
@@ -265,9 +268,9 @@ import weakref
 from io import StringIO
 from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
-from types import FunctionType, ModuleType
+from types import ModuleType
 
-__version__ = '0.0.29'                          #: actual version of this portion/package/module
+__version__ = '0.0.30'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -520,6 +523,37 @@ def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
     return " " * idx + current_line[idx:]
 
 
+def module_callable(entry_point: str, module_path: str = "") -> Tuple[Optional[ModuleType], Optional[Callable]]:
+    """ determine dynamically the pointers to a module and to a callable declared within the module.
+
+    :param entry_point:         entry point of a callable in the form <module_name>:<callable_name>.
+                                If the module folder is not available in sys.path then you also have to
+                                pass the module folder path into the :paramref:`module_path` argument.
+    :param module_path:         optional path where the module is situated (only needed if path is not is sys.path).
+    :return:                    tuple of module object and callable object ore None if module/callable doesn't exist.
+    """
+    module = func = None
+    mod_name, func_name = entry_point.split(':')
+    module_path = os.path.join(module_path, mod_name + '.py')
+
+    if os.path.exists(module_path):
+        spec = importlib.util.spec_from_file_location(mod_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+
+        # mypy: had to add import (from importlib.abc import Loader) and assert and then also noinspection for PyCharm
+        assert isinstance(spec.loader, importlib.abc.Loader)
+        # noinspection PyUnresolvedReferences
+        spec.loader.exec_module(module)
+
+    elif mod_name in sys.modules:
+        module = sys.modules[mod_name]
+
+    if module:
+        func = getattr(module, func_name, None)
+
+    return module, func
+
+
 def module_name(*skip_modules: str, depth: int = 1) -> Optional[str]:
     """ find the first module in the call stack that is *not* in :paramref:`module_name.skip_modules`.
 
@@ -533,48 +567,6 @@ def module_name(*skip_modules: str, depth: int = 1) -> Optional[str]:
     if not skip_modules:
         skip_modules = (__name__,)
     return stack_var('__name__', *skip_modules, depth=depth)
-
-
-def module_function(entry_point: str,
-                    *args,
-                    module_path: str = "", execute_function: bool = True,
-                    ignored_exceptions: Tuple[Type[Exception], ...] = (),
-                    **kwargs
-                    ) -> Tuple[Optional[ModuleType], Optional[FunctionType], Any]:
-    """ check if the function exists in a Python module and optionally call it.
-
-    :param entry_point:         entry point of function in the form <module_name>:<function_name>.
-                                If the module folder is not available in sys.path then you also have to
-                                pass the folder path into the :paramref:`module_path` argument.
-    :param args:                optional arguments passed to the module function.
-    :param module_path:         optional path where the module is situated (only needed if path is not is sys.path).
-    :param execute_function:    optional; pass False to prevent the execution of the module function.
-    :param ignored_exceptions:  tuple of ignored exceptions.
-    :param kwargs:              optional key word arguments passed to the module function.
-    :return:                    tuple of module object, function object and function return value or None if function
-                                didn't get called (:paramref:`execute_function` is False).
-    """
-    module = func = ret = None
-    mod_name, func_name = entry_point.split(':')
-    module_path = os.path.join(module_path, mod_name + '.py')
-    if os.path.exists(module_path):
-        spec = importlib.util.spec_from_file_location(mod_name, module_path)
-        module = importlib.util.module_from_spec(spec)
-
-        # mypy: had to add import (from importlib.abc import Loader) and assert and then also noinspection for PyCharm
-        assert isinstance(spec.loader, importlib.abc.Loader)
-        # noinspection PyUnresolvedReferences
-        spec.loader.exec_module(module)
-
-        func = getattr(module, func_name, None)
-        if func:
-            if execute_function:
-                try:
-                    ret = func(*args, **kwargs)
-                except ignored_exceptions:
-                    pass
-
-    return module, func, ret
 
 
 def parse_date(literal: str, *additional_formats: str, replace: Optional[Dict[str, Any]] = None,
@@ -756,10 +748,10 @@ def to_ascii(unicode_str: str) -> str:
     return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 
-def try_call(func: Callable, *args, ignored_exceptions: Tuple[Type[Exception], ...] = (), **kwargs) -> Any:
-    """ call function ignoring specified exceptions and return function return value.
+def try_call(callee: Callable, *args, ignored_exceptions: Tuple[Type[Exception], ...] = (), **kwargs) -> Any:
+    """ execute callable while ignoring specified exceptions and return callable return value.
 
-    :param func:                function to be called.
+    :param callee:              pointer to callable (either function pointer, lambda expression, a class, ...).
     :param args:                function arguments tuple.
     :param ignored_exceptions:  tuple of ignored exceptions.
     :param kwargs:              function keyword arguments dict.
@@ -767,7 +759,7 @@ def try_call(func: Callable, *args, ignored_exceptions: Tuple[Type[Exception], .
     """
     ret = None
     try:  # catch type conversion errors, e.g. for datetime.date(None) while bool(None) works (->False)
-        ret = func(*args, **kwargs)
+        ret = callee(*args, **kwargs)
     except ignored_exceptions:
         pass
     return ret
