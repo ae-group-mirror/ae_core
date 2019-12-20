@@ -71,8 +71,11 @@ For to encode unicode strings to other codecs the functions :func:`force_encodin
 :func:`hide_dup_line_prefix` is very practical if you want to remove or hide redundant
 line prefixes in your log files, to make them better readable.
 
-Finally the :func:`round_traditional` get declared in this module fully compatible to
-Python's :func:`round` function, to be used for traditional rounding of float values.
+The :func:`round_traditional` function get provided by this module for traditional rounding of float values.
+The function signature is fully compatible to Python's :func:`round` function.
+
+For to determine the value of an OS environment variable with automatic variable name conversion
+you can use the function :func:`env_var`.
 
 
 Application Base Classes
@@ -270,7 +273,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
 from types import ModuleType
 
-__version__ = '0.0.30'                          #: actual version of this portion/package/module
+__version__ = '0.0.31'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -433,6 +436,30 @@ def correct_phone(phone: str, changed: bool = False, removed: Optional[List[str]
             changed = True
 
     return corr_phone, changed
+
+
+def env_var(name: str, convert_name: bool = False):
+    """ determine the value of an OS environment variable optionally preventing invalid variable name.
+
+    :param name:            name of a OS environment variable.
+    :param convert_name:    pass True for to prevent invalid variable names by converting
+                            CamelCase names into SNAKE_CASE, lower-case into
+                            upper-case and all non-alpha-numeric characters into underscore characters.
+    :return:
+    """
+
+    if convert_name:
+        env_var_parts = list()
+        for char in name:
+            if char.isupper():
+                env_var_parts.append('_' + char)
+            elif char.isalnum():
+                env_var_parts.append(char.upper())
+            else:
+                env_var_parts.append('_')
+        name = ''.join(env_var_parts)
+
+    return os.environ.get(name)
 
 
 def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
@@ -1397,7 +1424,6 @@ class AppBase:
 
         :param redirect:    pass True to enable or False to disable the redirection.
         """
-        global ori_std_out, ori_std_err         # pylint: disable=invalid-name
         is_main_app_instance = main_app_instance() is self
         if redirect:
             if not isinstance(sys.stdout, _PrintingReplicator):  # sys.stdout==ori_std_out not works with pytest/capsys
