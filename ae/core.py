@@ -273,7 +273,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
 from types import ModuleType
 
-__version__ = '0.0.31'                          #: actual version of this portion/package/module
+__version__ = '0.0.32'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -1168,14 +1168,35 @@ class AppBase:
                  debug_level: int = DEBUG_LEVEL_DISABLED, multi_threading: bool = False, suppress_stdout: bool = False):
         """ initialize a new :class:`AppBase` instance.
 
-        :param app_title:               application instance title/description (def=value of main module docstring).
-        :param app_name:                application instance name (def=main module file's base name).
-        :param app_version:             application version (def=value of global __version__ in call stack).
-        :param sys_env_id:              system environment id used as file name suffix for to load all
-                                        the system config variables in sys_env<suffix>.cfg (def='', pass e.g. 'LIVE'
-                                        for to init second :class:`AppBase` instance with values from sys_envLIVE.cfg).
-        :param debug_level:             default debug level (def=:data:`DEBUG_LEVEL_DISABLED`).
+        :param app_title:               application title/description for to set the instance attribute
+                                        :attr:`~ae.core.AppBase.app_title`.
+
+                                        If not specified then the docstring of your app's main module will
+                                        be used (see :ref:`example <app-title>`).
+
+        :param app_name:                application instance name for to set the instance attribute
+                                        :attr:`~ae.core.AppBase.app_name`.
+
+                                        If not specified then base name of the main module file name will be used.
+
+        :param app_version:             application version string for to set the instance attribute
+                                        :attr:`~ae.core.AppBase.app_version`.
+
+                                        If not specified then value of a global variable with the name
+                                        `__version__` will be used (if declared in the actual call stack).
+
+        :param sys_env_id:              system environment id for to set the instance attribute
+                                        :attr:`~ae.core.AppBase.sys_env_id`.
+
+                                        The default value of this argument is an empty string.
+
+        :param debug_level:             default debug level for to set the instance attribute
+                                        :attr:`~ae.core.AppBase.debug_level`.
+
+                                        The default value of this argument is :data:`~ae.core.DEBUG_LEVEL_DISABLED`.
+
         :param multi_threading:         pass True if instance is used in multi-threading app.
+
         :param suppress_stdout:         pass True (for wsgi apps) for to prevent any python print outputs to stdout.
        """
         self.startup_beg: datetime.datetime = \
@@ -1195,8 +1216,8 @@ class AppBase:
 
         self.app_title: str = app_title                         #: title/description of this app instance
         self.app_name: str = app_name                           #: name of this app instance
-        self.app_version: str = app_version                     #: version of your app instance
-        self.sys_env_id: str = sys_env_id                       #: system environment id of this instance
+        self.app_version: str = app_version                     #: version of this app instance
+        self.sys_env_id: str = sys_env_id                       #: system environment id of this app instance
         self.debug_level: int = debug_level                     #: debug level of this app instance
         if multi_threading:
             activate_multi_threading()
