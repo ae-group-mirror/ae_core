@@ -22,7 +22,7 @@ from ae.core import (
     APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, DEBUG_LEVEL_TIMESTAMPED,
     MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
-    correct_email, correct_phone, env_var, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix,
+    correct_email, correct_phone, env_str, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix,
     module_callable, module_name,
     parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, to_ascii,
     try_call, try_eval, try_exec,
@@ -36,27 +36,27 @@ module_var = 'module_var_val'   # used for stack_var()/try_exec() tests
 class TestCoreHelpers:
     def test_env_var_unconverted(self):
         ev = 'PATH'
-        assert env_var(ev)
+        assert env_str(ev)
 
     def test_env_var_case_conversions(self):
         ev = 'path'
-        assert env_var(ev, convert_name=True)
+        assert env_str(ev, convert_name=True)
 
         ev = 'camelCase'
         vv = "test variable value"
         os.environ['CAMEL_CASE'] = vv
-        assert env_var(ev, convert_name=True) == vv
+        assert env_str(ev, convert_name=True) == vv
 
         ev = 'CamelCase'
         vv = "test variable value"
         os.environ['_CAMEL_CASE'] = vv
-        assert env_var(ev, convert_name=True) == vv
+        assert env_str(ev, convert_name=True) == vv
 
     def test_env_var_non_alpha_num_conversions(self):
         ev = 'non\talpha\\num/chars-69'
         vv = "test variable value"
         os.environ['NON_ALPHA_NUM_CHARS_69'] = vv
-        assert env_var(ev, convert_name=True) == vv
+        assert env_str(ev, convert_name=True) == vv
 
     def test_exec_with_return(self):
         assert exec_with_return("") is None

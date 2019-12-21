@@ -75,7 +75,7 @@ The :func:`round_traditional` function get provided by this module for tradition
 The function signature is fully compatible to Python's :func:`round` function.
 
 For to determine the value of an OS environment variable with automatic variable name conversion
-you can use the function :func:`env_var`.
+you can use the function :func:`env_str`.
 
 
 Application Base Classes
@@ -273,7 +273,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
 from types import ModuleType
 
-__version__ = '0.0.32'                          #: actual version of this portion/package/module
+__version__ = '0.0.33'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -438,26 +438,25 @@ def correct_phone(phone: str, changed: bool = False, removed: Optional[List[str]
     return corr_phone, changed
 
 
-def env_var(name: str, convert_name: bool = False):
-    """ determine the value of an OS environment variable optionally preventing invalid variable name.
+def env_str(name: str, convert_name: bool = False) -> Optional[str]:
+    """ determine the string value of an OS environment variable, optionally preventing invalid variable name.
 
     :param name:            name of a OS environment variable.
     :param convert_name:    pass True for to prevent invalid variable names by converting
                             CamelCase names into SNAKE_CASE, lower-case into
                             upper-case and all non-alpha-numeric characters into underscore characters.
-    :return:
+    :return:                string value of OS environment variable if found else None.
     """
-
     if convert_name:
-        env_var_parts = list()
+        str_parts = list()
         for char in name:
             if char.isupper():
-                env_var_parts.append('_' + char)
+                str_parts.append('_' + char)
             elif char.isalnum():
-                env_var_parts.append(char.upper())
+                str_parts.append(char.upper())
             else:
-                env_var_parts.append('_')
-        name = ''.join(env_var_parts)
+                str_parts.append('_')
+        name = ''.join(str_parts)
 
     return os.environ.get(name)
 
