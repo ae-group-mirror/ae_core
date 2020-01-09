@@ -24,7 +24,7 @@ from ae.core import (
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
     correct_email, correct_phone, env_str, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix,
     module_callable, module_name,
-    parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, to_ascii,
+    parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, sys_platform, to_ascii,
     try_call, try_eval, try_exec,
     AppBase, _PrintingReplicator, SubApp)
 
@@ -481,6 +481,58 @@ class TestCoreHelpers:
         ret = sys_env_text(extra_sys_env_dict=dict(test_add='TstAdd'))
         assert 'test_add' in ret
         assert 'TstAdd' in ret
+
+    def test_sys_platform_android(self):
+        try:
+            os.environ['ANDROID_ARGUMENT'] = 'tst'
+            assert sys_platform() == 'android'
+        finally:
+            os.environ.pop('ANDROID_ARGUMENT', None)
+
+        try:
+            os.environ['KIVY_BUILD'] = 'android'
+            assert sys_platform() == 'android'
+        finally:
+            os.environ.pop('KIVY_BUILD', None)
+
+    def test_sys_platform_cygwin(self):
+        old_platform = sys.platform
+        try:
+            sys.platform = 'cygwin'
+            assert sys_platform() == 'cygwin'
+        finally:
+            sys.platform = old_platform
+
+    def test_sys_platform_darwin(self):
+        old_platform = sys.platform
+        try:
+            sys.platform = 'darwin'
+            assert sys_platform() == 'darwin'
+        finally:
+            sys.platform = old_platform
+
+    def test_sys_platform_freebsd(self):
+        old_platform = sys.platform
+        try:
+            sys.platform = 'freebsd'
+            assert sys_platform() == 'freebsd'
+        finally:
+            sys.platform = old_platform
+
+    def test_sys_platform_ios(self):
+        try:
+            os.environ['KIVY_BUILD'] = 'ios'
+            assert sys_platform() == 'ios'
+        finally:
+            os.environ.pop('KIVY_BUILD', None)
+
+    def test_sys_platform_win32(self):
+        old_platform = sys.platform
+        try:
+            sys.platform = 'win32'
+            assert sys_platform() == 'win32'
+        finally:
+            sys.platform = old_platform
 
     def test_to_ascii(self):
         assert to_ascii('äöü') == 'aou'

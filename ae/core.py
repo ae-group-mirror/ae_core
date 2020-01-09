@@ -5,8 +5,8 @@ ae package core constants, helper functions and base classes
 This module declares practical constants, base classes as well as tiny helper functions
 making the code of your application (and other modules of this package) much cleaner.
 
-Constants
----------
+core constants
+--------------
 
 For to set the debug level of your application run-time you can use one of the constants
 :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`, :data:`DEBUG_LEVEL_VERBOSE`
@@ -31,8 +31,8 @@ to the default encoding (specified by :data:`DEF_ENCODING`) with the default err
 handling method specified by :data:`DEF_ENCODE_ERRORS`.
 
 
-Helper Functions
-----------------
+core helper functions
+---------------------
 
 Although most of the helper functions provided by this module are tiny with only few lines
 of code, they are a great help in making your application code more clear and readable.
@@ -54,6 +54,9 @@ and read e.g. variable values of the callers of your functions/methods. The clas
 
 Other helper functions for the inspection and debugging of your application are
 :func:`full_stack_trace`, :func:`sys_env_dict` and :func:`sys_env_text`.
+
+The helper function :func:`sys_platform` is needed because the Python's :func:`os.name`
+and :func:`sys.platform` do not detect iOS and Android.
 
 The :func:`parse_date` helper function is converting date and datetime string literals into the
 built-in types :class:`datetime.datetime` and :class:`datetime.date`.
@@ -78,7 +81,7 @@ For to determine the value of an OS environment variable with automatic variable
 you can use the function :func:`env_str`.
 
 
-Application Base Classes
+application base classes
 ------------------------
 
 The classes :class:`AppBase` and :class:`SubApp` are applying logging and debugging features
@@ -99,8 +102,8 @@ of the critical error (the last debug and error messages) into the
 standard error/output and into any activated log files.
 
 
-Basic Usage
-...........
+basic usage of an application base class
+........................................
 
 At the top of your python application main file/module create an instance of the class :class:`AppBase`::
 
@@ -126,7 +129,7 @@ the :attr:`name/id of this application instance <AppBase.app_name>` or
 the :attr:`startup folder path <AppBase._app_path>`.
 
 
-Application Class Hierarchy
+application class hierarchy
 ...........................
 
 For most use cases you will not instantiate from :class:`AppBase` directly - instead you will
@@ -140,7 +143,7 @@ For applications with an GUI use instead one of the classes :class:`~.kivy_app.K
 :class:`~.enaml_app.EnamlApp` or :class:`~.dabo_app.DaboApp`.
 
 
-Application Logging
+application logging
 -------------------
 
 Print-outs are an essential tool for the debugging and logging of your application at run-time. In python
@@ -176,7 +179,7 @@ Apart from the gracefully handling of :exc:`UnicodeEncodeError` exceptions, the
 system errors and to dump a traceback of them to the console and any activated log file.
 
 
-Activate Ae Log File
+activate ae log file
 ....................
 
 .. _ae-log-file:
@@ -189,7 +192,7 @@ simply specify the file name of the log file in the :meth:`~AppBase.init_logging
     app.init_logging(log_file_name='my_log_file.log')
 
 
-Activate Ae Logging Features
+activate ae logging features
 ............................
 
 For multi-threaded applications you can include the thread-id of the printing thread automatically
@@ -215,7 +218,7 @@ The order of precedence for to find the appropriate logging configuration of eac
 app instance is documented :meth:`here <.console.ConsoleApp._init_logging>` .
 
 
-Using Python Logging Module
+using python logging module
 ...........................
 
 If you prefer to use instead the python logging module for the print-outs of your application,
@@ -231,7 +234,7 @@ instances created by your application will automatically disable the ae log file
 instance.
 
 
-Application Debugging
+application debugging
 ---------------------
 
 For to use the debug features of :mod:`~.core` you simple have to import the needed
@@ -273,7 +276,7 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
 from types import ModuleType
 
-__version__ = '0.0.33'                          #: actual version of this portion/package/module
+__version__ = '0.0.34'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -678,45 +681,6 @@ def round_traditional(num_value: float, num_digits: int = 0) -> float:
     return round(num_value + 10 ** (-len(str(num_value)) - 1), num_digits)
 
 
-def sys_env_dict(file: str = __file__) -> Dict[str, Any]:
-    """ returns dict with python system run-time environment values.
-
-    :param file:    optional file name (def=__file__/ae.core.py).
-    :return:        python system run-time environment values like python_ver, argv, cwd, executable, __file__, frozen
-                    and bundle_dir.
-    """
-    sed: Dict[str, Any] = dict()
-    sed['python_ver'] = sys.version
-    sed['argv'] = sys.argv
-    sed['executable'] = sys.executable
-    sed['cwd'] = os.getcwd()
-    sed['__file__'] = file
-    sed['frozen'] = getattr(sys, 'frozen', False)
-    if getattr(sys, 'frozen', False):
-        sed['bundle_dir'] = getattr(sys, '_MEIPASS', '*#ERR#*')
-    return sed
-
-
-def sys_env_text(file: str = __file__, ind_ch: str = " ", ind_len: int = 18, key_ch: str = "=", key_len: int = 12,
-                 extra_sys_env_dict: Optional[Dict[str, str]] = None) -> str:
-    """ compile formatted text block with system environment info.
-
-    :param file:                main module file name (def=__file__).
-    :param ind_ch:              indent character (def=" ").
-    :param ind_len:             indent depths (def=18 characters).
-    :param key_ch:              key-value separator character (def=" =").
-    :param key_len:             key-name maximum length (def=12 characters).
-    :param extra_sys_env_dict:  dict with additional system info items.
-    :return:                    text block with system environment info.
-    """
-    sed = sys_env_dict(file=file)
-    if extra_sys_env_dict:
-        sed.update(extra_sys_env_dict)
-    ind = ""
-    text = "\n".join([f"{ind:{ind_ch}>{ind_len}}{key:{key_ch}<{key_len}}{val}" for key, val in sed.items()])
-    return text
-
-
 def stack_frames(depth: int = 1) -> Generator:  # Generator[frame, None, None]
     """ generator diving deeper into the call stack from the level given in :paramref:`~stack_frames.depth`.
 
@@ -759,6 +723,68 @@ def stack_variable(name: str, *skip_modules: str, depth: int = 1, locals_only: b
 
 
 stack_var = stack_variable          #: alias of function :func:`.stack_variable`
+
+
+def sys_env_dict(file: str = __file__) -> Dict[str, Any]:
+    """ returns dict with python system run-time environment values.
+
+    :param file:    optional file name (def=__file__/ae.core.py).
+    :return:        python system run-time environment values like python_ver, argv, cwd, executable, __file__, frozen
+                    and bundle_dir.
+    """
+    sed: Dict[str, Any] = dict()
+    sed['python_ver'] = sys.version
+    sed['argv'] = sys.argv
+    sed['executable'] = sys.executable
+    sed['cwd'] = os.getcwd()
+    sed['__file__'] = file
+    sed['frozen'] = getattr(sys, 'frozen', False)
+    if getattr(sys, 'frozen', False):
+        sed['bundle_dir'] = getattr(sys, '_MEIPASS', '*#ERR#*')
+    return sed
+
+
+def sys_env_text(file: str = __file__, ind_ch: str = " ", ind_len: int = 18, key_ch: str = "=", key_len: int = 12,
+                 extra_sys_env_dict: Optional[Dict[str, str]] = None) -> str:
+    """ compile formatted text block with system environment info.
+
+    :param file:                main module file name (def=__file__).
+    :param ind_ch:              indent character (def=" ").
+    :param ind_len:             indent depths (def=18 characters).
+    :param key_ch:              key-value separator character (def=" =").
+    :param key_len:             key-name maximum length (def=12 characters).
+    :param extra_sys_env_dict:  dict with additional system info items.
+    :return:                    text block with system environment info.
+    """
+    sed = sys_env_dict(file=file)
+    if extra_sys_env_dict:
+        sed.update(extra_sys_env_dict)
+    ind = ""
+    text = "\n".join([f"{ind:{ind_ch}>{ind_len}}{key:{key_ch}<{key_len}}{val}" for key, val in sed.items()])
+    return text
+
+
+def sys_platform() -> str:
+    """ determine the operating system where this code is running.
+
+    :return:    operating system (extension) as string:
+
+                * `'android'` for all Android systems.
+                * `'cygwin'` for MS Windows with an installed Cygwin extension.
+                * `'darwin'` for all Apple Mac OS X systems.
+                * `'freebsd'` for all other BSD-based unix systems.
+                * `'ios'` for all Apple iOS systems.
+                * `'linux'` for all other unix systems (like Arch, Debian/Ubuntu, Suse, ...).
+                * `'win32'` for MS Windows systems (w/o the Cygwin extension).
+
+    .. note::
+
+    """
+    if env_str('ANDROID_ARGUMENT') is not None:  # p4a env variable; alternatively use ANDROID_PRIVATE
+        platform = 'android'
+    else:
+        platform = env_str('KIVY_BUILD') or sys.platform    # KIVY_BUILD == 'android'/'ios' on Android/iOS
+    return platform
 
 
 def to_ascii(unicode_str: str) -> str:

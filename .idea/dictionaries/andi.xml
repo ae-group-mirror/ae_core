@@ -8,9 +8,11 @@
       <w>caplog</w>
       <w>capsys</w>
       <w>dabo</w>
+      <w>debian</w>
       <w>ecker</w>
       <w>enaml</w>
       <w>faulthandler</w>
+      <w>freebsd</w>
       <w>genindex</w>
       <w>graphviz</w>
       <w>ident</w>
@@ -37,6 +39,7 @@
       <w>searchbox</w>
       <w>strftime</w>
       <w>strptime</w>
+      <w>suse</w>
       <w>toctree</w>
       <w>typehints</w>
       <w>tzinfo</w>
