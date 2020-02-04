@@ -276,7 +276,8 @@ from string import ascii_letters, digits
 from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
 from types import ModuleType
 
-__version__ = '0.0.34'                          #: actual version of this portion/package/module
+
+__version__ = '0.0.35'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -777,8 +778,6 @@ def sys_platform() -> str:
                 * `'linux'` for all other unix systems (like Arch, Debian/Ubuntu, Suse, ...).
                 * `'win32'` for MS Windows systems (w/o the Cygwin extension).
 
-    .. note::
-
     """
     if env_str('ANDROID_ARGUMENT') is not None:  # p4a env variable; alternatively use ANDROID_PRIVATE
         platform = 'android'
@@ -935,7 +934,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     This function has an alias named :func:`.po`.
     """
     processing = end == "\r" or (objects and str(objects[0]).startswith('\r'))  # True if called by Progress.next()
-    enc = (file or ori_std_out if processing else sys.stdout).encoding
+    enc = getattr(file or ori_std_out if processing else sys.stdout, 'encoding', 'utf-8')
     use_py_logger = False
 
     main_app = main_app_instance()
