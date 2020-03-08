@@ -277,7 +277,7 @@ from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextI
 from types import ModuleType
 
 
-__version__ = '0.0.35'                          #: actual version of this portion/package/module
+__version__ = '0.0.36'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -305,6 +305,12 @@ LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.ERROR, DEBUG_LEV
 """
 
 HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidden in print/repr output (not if verbose)
+
+SKIPPED_MODULES = ('ae.core', 'ae.console', 'ae.gui_app',
+                   'ae.kivy_app', 'ae.enaml_app',
+                   'ae.beeware_app', 'ae.pyglet_app', 'ae.pygobject_app', 'ae.dabo_app',
+                   'ae.qpython_app', 'ae.appjar_app')
+""" skipped modules used as default by :func:`module_name` and :func:`stack_variable` """
 
 
 def correct_email(email: str, changed: bool = False, removed: Optional[List[str]] = None) -> Tuple[str, bool]:
@@ -492,9 +498,11 @@ def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception],
             if isinstance(nodes[-1], ast.Expr):
                 last_node = nodes.pop()
                 if len(nodes) > 0:
+                    # noinspection BuiltinExec
                     exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
                 # mypy needs getattr() instead of last_node.value
                 return eval(compile(ast.Expression(getattr(last_node, 'value')), "<ast>", 'eval'), glo_vars, loc_vars)
+            # noinspection BuiltinExec
             exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
     except ignored_exceptions:
         pass                            # RETURN None if one of the ignorable exceptions raised in compiling
@@ -595,7 +603,7 @@ def module_name(*skip_modules: str, depth: int = 1) -> Optional[str]:
                             argument.
     """
     if not skip_modules:
-        skip_modules = (__name__,)
+        skip_modules = SKIPPED_MODULES
     return stack_var('__name__', *skip_modules, depth=depth)
 
 
@@ -712,7 +720,7 @@ def stack_variable(name: str, *skip_modules: str, depth: int = 1, locals_only: b
     This function has an alias named :func:`.stack_var`.
     """
     if not skip_modules:
-        skip_modules = (__name__,)
+        skip_modules = SKIPPED_MODULES
     val = None
     for frame in stack_frames(depth):
         global_vars = frame.f_globals
@@ -947,8 +955,8 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
 
     if processing:
         file = ori_std_out
-    elif logger is not None and file is None and (app and app.py_log_params and main_app != app
-                                                  or main_app and main_app.py_log_params):
+    elif logger is not None and file is None and (
+            app and app.py_log_params and main_app != app or main_app and main_app.py_log_params):
         use_py_logger = True
         logger_late_init()
 
@@ -1232,7 +1240,8 @@ class AppBase:
         self._app_path: str = os.path.dirname(path_name_ext)    #: path to folder of your main app code file
 
         if not app_title:
-            app_title = stack_var('__doc__', 'ae.core', 'ae.console') or ""
+            doc_str = stack_var('__doc__')
+            app_title = doc_str.split('\n')[0] if doc_str else ""
         if not app_name:
             app_name = os.path.splitext(app_file_name)[0]
         if not app_version:

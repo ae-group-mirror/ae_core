@@ -2,8 +2,10 @@
   <dictionary name="andi">
     <words>
       <w>anybadge</w>
+      <w>appjar</w>
       <w>autodoc</w>
       <w>autosummary</w>
+      <w>beeware</w>
       <w>bysource</w>
       <w>caplog</w>
       <w>capsys</w>
@@ -30,9 +32,12 @@
       <w>pluggy</w>
       <w>pycache</w>
       <w>pydev</w>
+      <w>pyglet</w>
+      <w>pygobject</w>
       <w>pylint</w>
       <w>pypi</w>
       <w>pytest</w>
+      <w>qpython</w>
       <w>readouterr</w>
       <w>readthedocs</w>
       <w>runpy</w>

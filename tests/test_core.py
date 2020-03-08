@@ -1,5 +1,4 @@
-""" test doc string for AppBase.app_title tests
-"""
+""" test doc string for AppBase.app_title tests. """
 
 import datetime
 import datetime as test_dt
