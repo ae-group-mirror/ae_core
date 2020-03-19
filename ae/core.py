@@ -277,7 +277,7 @@ from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextI
 from types import ModuleType
 
 
-__version__ = '0.0.36'                          #: actual version of this portion/package/module
+__version__ = '0.0.37'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -1065,8 +1065,8 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
         if app_key == _main_app_inst_key:
             _main_app_inst_key = ''
             assert cnt == 0, f"{cnt} sub-apps {list(_app_instances.keys())} found after main app {app_key}{app} remove"
-        else:
-            assert cnt > 0, f"Unregistered last app {app_key} but was not the main app {_main_app_inst_key}"
+        elif _main_app_inst_key:
+            assert cnt > 0, f"Unregistered last app {app_key}/{app} but was not the main app {_main_app_inst_key}"
         return app
 
 
