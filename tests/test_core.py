@@ -18,14 +18,13 @@ except ImportError:
 
 # noinspection PyProtectedMember
 from ae.core import (
-    APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, DEBUG_LEVEL_TIMESTAMPED,
-    MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
+    APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
     correct_email, correct_phone, env_str, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix,
     module_callable, module_name,
     parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, sys_platform, to_ascii,
     try_call, try_eval, try_exec,
-    AppBase, _PrintingReplicator, SubApp)
+    AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED)
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
@@ -1131,7 +1130,8 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert app.app_title == __doc__
 
     def test_log_line_prefix(self, restore_app_env):
-        app = AppBase(sys_env_id='Tee sst', debug_level=DEBUG_LEVEL_TIMESTAMPED)
+        app = AppBase(sys_env_id='Tee sst')
+        app._log_with_timestamp = True
         prefix = app.log_line_prefix()
         assert APP_KEY_SEP + 'Tee sst' in prefix
         assert datetime.datetime.now().strftime(DATE_TIME_ISO)[:12] in prefix
@@ -1176,3 +1176,24 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
 
     def test_app_instances_reset2(self):
         assert main_app_instance() is None
+
+    def test_verbose(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_VERBOSE)
+        assert app.verbose
+
+    def test_debug_out(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
+        tst = "tsT-debug-out-string"
+        app.debug_out(tst)
+        assert tst in capsys.readouterr()[0]
+
+    def test_verbose_out(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
+        tst = "tsT-debug-miss-string"
+        app.verbose_out(tst)
+        assert tst not in capsys.readouterr()[0]
+
+        app.debug_level = DEBUG_LEVEL_VERBOSE
+        tst = "tsT-verbose-out-string"
+        app.verbose_out(tst)
+        assert tst in capsys.readouterr()[0]

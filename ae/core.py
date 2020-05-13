@@ -8,9 +8,9 @@ making the code of your application (and other modules of this package) much cle
 core constants
 --------------
 
-For to set the debug level of your application run-time you can use one of the constants
-:data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`, :data:`DEBUG_LEVEL_VERBOSE`
-or :data:`DEBUG_LEVEL_TIMESTAMPED`. The debug level of your application can be either
+For to set the debug level of your application run-time you can use one of
+the constants :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`
+or :data:`DEBUG_LEVEL_VERBOSE`. The debug level of your application can be either
 hard-coded in your code or optionally also externally (using the :ref:`config-files`
 or :ref:`config-options` of the module :mod:`.console`).
 
@@ -245,16 +245,14 @@ your :class:`AppBase` or :class:`SubApp` class to the :paramref:`~AppBase.debug_
 
 By passing :data:`DEBUG_LEVEL_ENABLED` the print-outs (and log file contents) will be more detailed,
 and even more verbose if you use instead the debug level :data:`DEBUG_LEVEL_VERBOSE`.
-The highest verbosity you get with debug level :data:`DEBUG_LEVEL_TIMESTAMPED`,
-which is also adding the actual date and time to the print-outs and logs.
 
 The debug level can be changed at any time in your application code by directly assigning
-the new debug level to the :attr:`~AppBase.debug_level` attribute. If you prefer to change
+the new debug level to the :attr:`~AppBase.debug_level` property. If you prefer to change
 the (here hard-coded) debug levels dynamically, then use the :class:`~.console.ConsoleApp` instead
-of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides the attr:`~AppBase.debugLevel`
+of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides this property as a
 :ref:`configuration file variable <config-variables>`
-and :ref:`commend line option <config-options>` for
-to specify :ref:`the actual debug level <pre-defined-config-options>` without the need
+and :ref:`commend line option <config-options>`. This way you can
+specify :ref:`the actual debug level <pre-defined-config-options>` without the need
 to change (and re-build) your application code.
 """
 import ast
@@ -277,7 +275,7 @@ from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextI
 from types import ModuleType
 
 
-__version__ = '0.0.37'                          #: actual version of this portion/package/module
+__version__ = '0.0.38'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -297,10 +295,9 @@ DEBUG_LEVELS: Dict[int, str] = {0: 'disabled', 1: 'enabled', 2: 'verbose', 3: 't
 DEBUG_LEVEL_DISABLED: int = 0       #: lowest debug level - only display logging levels ERROR/CRITICAL.
 DEBUG_LEVEL_ENABLED: int = 1        #: minimum debugging info - display logging levels WARNING or higher.
 DEBUG_LEVEL_VERBOSE: int = 2        #: verbose debug info - display logging levels INFO/DEBUG or higher.
-DEBUG_LEVEL_TIMESTAMPED: int = 3    #: highest/verbose debug info - including timestamps in the log output.
 
-LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.ERROR, DEBUG_LEVEL_ENABLED: logging.WARNING,
-                                  DEBUG_LEVEL_VERBOSE: logging.INFO, DEBUG_LEVEL_TIMESTAMPED: logging.DEBUG}
+LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.WARNING, DEBUG_LEVEL_ENABLED: logging.INFO,
+                                  DEBUG_LEVEL_VERBOSE: logging.DEBUG}
 """ association between ae debug levels and python logging levels.
 """
 
@@ -1010,7 +1007,7 @@ _app_instances = weakref.WeakValueDictionary()   # type: weakref.WeakValueDictio
 """ dict that is weakly holding references to all :class:`AppBase` instances created at run time.
 
 Gets automatically initialized in :meth:`AppBase.__init__` for to allow log file split/rotation
-and debugLevel access at application thread or module level.
+and debug_level access at application thread or module level.
 
 The first created :class:`AppBase` instance is called the main app instance. :data:`_main_app_inst_key`
 stores the dict key of the main instance.
@@ -1188,6 +1185,7 @@ class AppBase:
     * :attr:`_log_file_name`        path and file name of the ae log file.
     * :attr:`_log_file_size_max`    maximum size in MBytes of a ae log file.
     * :attr:`_log_file_stream`      ae log file TextIO output stream.
+    * :attr:`_log_with_timestamp`   log timestamp line prefix if True or a non-empty strftime compatible format string.
     * :attr:`py_log_params`         python logging config dictionary.
     * :attr:`_nul_std_out`          null stream used for to prevent print-outs to :attr:`standard output <sys.stdout>`.
     * :attr:`_shut_down`            flag set to True if this application instance got already shutdown.
@@ -1250,8 +1248,8 @@ class AppBase:
         self.app_title: str = app_title                         #: title/description of this app instance
         self.app_name: str = app_name                           #: name of this app instance
         self.app_version: str = app_version                     #: version of this app instance
+        self._debug_level: int = debug_level                    #: debug level of this app instance
         self.sys_env_id: str = sys_env_id                       #: system environment id of this app instance
-        self.debug_level: int = debug_level                     #: debug level of this app instance
         if multi_threading:
             activate_multi_threading()
         self.suppress_stdout: bool = suppress_stdout            #: flag to suppress prints to stdout
@@ -1263,6 +1261,7 @@ class AppBase:
             self._log_file_index: int = 0                       #: log file index (for rotating logs)
             self._log_file_size_max: float = LOG_FILE_MAX_SIZE  #: maximum log file size in MBytes (rotating log files)
             self._log_file_name: str = ""                       #: log file name
+            self._log_with_timestamp: Union[bool, str] = False  #: True of strftime format string to enable timestamp
             self._nul_std_out: Optional[TextIO] = None          #: logging null stream
             self.py_log_params: Dict[str, Any] = dict()         #: dict of config parameters for py logging
 
@@ -1279,7 +1278,7 @@ class AppBase:
 
     @property
     def active_log_stream(self) -> Optional[Union[StringIO, TextIO]]:
-        """ check if ae logging is active and if yes then return the currently used log stream.
+        """ check if ae logging is active and if yes then return the currently used log stream (read-only property).
 
         :return:        log file or buf stream if logging is activated, else None.
         """
@@ -1288,14 +1287,39 @@ class AppBase:
 
     @property
     def app_key(self) -> str:
-        """ determine the key of this application class instance.
+        """ determine the key of this application class instance (read-only property).
 
         :return:        application key string.
         """
         return self.app_name + APP_KEY_SEP + self.sys_env_id
 
+    @property
+    def debug_level(self) -> int:
+        """ debug level property:
+
+        :getter:    return the current debug level of this app instance.
+        :setter:    change the debug level of this app instance.
+        """
+        return self._debug_level
+
+    @debug_level.setter
+    def debug_level(self, debug_level: int):
+        """ debug level setter (added for easier overwrite in inheriting classes). """
+        self._debug_level = debug_level
+
+    @property
+    def debug(self) -> bool:
+        """ True if app is in debug mode. """
+        return self._debug_level >= DEBUG_LEVEL_ENABLED
+
+    @property
+    def verbose(self) -> bool:
+        """ True if app is in verbose debug mode. """
+        return self._debug_level >= DEBUG_LEVEL_VERBOSE
+
     def init_logging(self, py_logging_params: Optional[Dict[str, Any]] = None, log_file_name: str = "",
-                     log_file_size_max: float = LOG_FILE_MAX_SIZE, disable_buffering: bool = False):
+                     log_file_size_max: float = LOG_FILE_MAX_SIZE, log_with_timestamp: Union[bool, str] = False,
+                     disable_buffering: bool = False):
         """ initialize logging system.
 
         :param py_logging_params:       config dict for python logging configuration.
@@ -1303,6 +1327,8 @@ class AppBase:
                                         given options in this dict and all the other kwargs are ignored.
         :param log_file_name:           default log file name for ae logging (def='' - ae logging disabled).
         :param log_file_size_max:       max. size in MB of ae log file (def=LOG_FILE_MAX_SIZE).
+        :param log_with_timestamp:      add timestamp prefix to each log line if True or a non-empty strftime
+                                        compatible format string.
         :param disable_buffering:       pass True to disable ae log buffering at app startup.
 
         Log files and config values will be initialized as late as possible in :meth:`~AppBase.log_file_check`
@@ -1320,8 +1346,9 @@ class AppBase:
                     self._std_out_err_redirection(False)
                 self._log_file_name = log_file_name
                 self._log_file_size_max = log_file_size_max
+                self._log_with_timestamp = log_with_timestamp
                 if not disable_buffering:
-                    self._log_buf_stream = StringIO(initial_value="####  Log Buffer\n" if self.debug_level else "")
+                    self._log_buf_stream = StringIO(initial_value="####  Log Buffer\n" if self.debug else "")
 
     def log_line_prefix(self) -> str:
         """ compile prefix of log print-out line for this :class:`AppBase` instance.
@@ -1333,9 +1360,9 @@ class AppBase:
           angle brackets (< and >), right aligned and space padded to minimal 6 characters.
         * :attr:`sys_env_id`: if not empty then printed surrounded with curly brackets ({ and }), left aligned
           and space padded to minimal 4 characters.
-        * :attr:`debug_level`: if greater or equal to :data:`DEBUG_LEVEL_TIMESTAMPED` then the system time
-          (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified by the
-          :data:`DATE_TIME_ISO` constant.
+        * :attr:`_log_with_timestamp`: if (a) True or (b) an non-empty string then the system time
+          (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified either by the
+          (a) the :data:`DATE_TIME_ISO` constant or (b) by the string in this attribute.
 
         This method is using the instance attribute :attr:`_last_log_line_prefix` for to keep a copy of
         the last printed log line prefix for to prevent the printout of duplicate characters in consecutive
@@ -1348,9 +1375,10 @@ class AppBase:
             parts.append(f"<{threading.get_ident(): >6}>")
         if self.app_key[-1] != APP_KEY_SEP:
             parts.append(f"{{{self.app_key: <6}}}")
-        if self.debug_level >= DEBUG_LEVEL_TIMESTAMPED:
-            parts.append(datetime.datetime.now().strftime(DATE_TIME_ISO))
-        elif self.debug_level >= DEBUG_LEVEL_ENABLED:
+        if self._log_with_timestamp:
+            format_string = DATE_TIME_ISO if isinstance(self._log_with_timestamp, bool) else self._log_with_timestamp
+            parts.append(datetime.datetime.now().strftime(format_string))
+        if self.debug:
             parts.append(f"[{DEBUG_LEVELS[self.debug_level][0]}]")
 
         prefix = "".join(parts)
@@ -1419,6 +1447,45 @@ class AppBase:
         print_out(*objects, **kwargs)
 
     po = print_out          #: alias of method :meth:`.print_out`
+
+    def debug_out(self, *objects, minimum_debug_level: int = DEBUG_LEVEL_ENABLED, **kwargs):
+        """ special debug version of :func:`builtin print() function <print>`.
+
+        This method will print-out the passed objects only if the :attr:`current debug level
+        <.core.AppBase.debug_level>` of this app instance is higher than the value passed into the
+        :paramref:`~debug_out.minimum_debug_level` argument. In this case the print-out will be
+        delegated onto the :meth:`~.print_out`.
+
+        :param objects:                 objects to be printed out.
+        :param minimum_debug_level:     minimum debug level for to print the passed objects.
+        :param kwargs:                  All the supported kwargs of this method
+                                        are documented at the :func:`print_out() function <~.core.print_out>`
+                                        of the :mod:`~.core` module (including the
+                                        :paramref:`~.print_out.file` argument).
+
+        This method has an alias named :meth:`.dpo`.
+        """
+        if self.debug_level >= minimum_debug_level:
+            self.po(*objects, **kwargs)
+
+    dpo = debug_out         #: alias of method :meth:`.debug_out`
+
+    def verbose_out(self, *objects, **kwargs):
+        """ special verbose debug version of :func:`builtin print() function <print>`.
+
+        :param objects:                 objects to be printed out.
+        :param kwargs:                  The :paramref:`~.core.AppBase.print_out.file` argument is documented
+                                        at the :meth:`~.core.AppBase.print_out` method of the
+                                        :class:`~.core.AppBase` class. All other supported kwargs of this method
+                                        are documented at the :func:`print_out() function <~.core.print_out>`
+                                        of the :mod:`~.core` module.
+
+        This method has an alias named :meth:`.vpo`.
+        """
+        if self.debug_level >= DEBUG_LEVEL_VERBOSE:
+            self.po(*objects, **kwargs)
+
+    vpo = verbose_out         #: alias of method :meth:`.verbose_out`
 
     def shutdown(self, exit_code: Optional[int] = 0, timeout: Optional[float] = None):
         """ shutdown this app instance and if it is the main app instance then also any created sub-app-instances.
@@ -1509,7 +1576,7 @@ class AppBase:
             try:
                 # cannot use print_out() here because of recursions on log file rotation, so use built-in print()
                 print(file=stream_file)
-                if self.debug_level:
+                if self.debug:
                     print('EoF', file=stream_file)
             except Exception as ex:     # pragma: no cover - pylint: disable=broad-except
                 self.po(f"Ignorable {stream_name} end-of-file marker exception={ex}", logger=_logger)
@@ -1526,7 +1593,7 @@ class AppBase:
         if stream:
             if self._log_file_stream:
                 self._append_eof_and_flush_file(stream, "ae log buf")
-                buf = stream.getvalue() + ("\n####  End Of Log Buffer" if self.debug_level else "")
+                buf = stream.getvalue() + ("\n####  End Of Log Buffer" if self.debug else "")
                 self._log_file_stream.write(buf)
             self._log_buf_stream = None
             stream.close()
