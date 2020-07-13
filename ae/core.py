@@ -275,7 +275,7 @@ from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextI
 from types import ModuleType
 
 
-__version__ = '0.0.38'                          #: actual version of this portion/package/module
+__version__ = '0.0.39'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -707,7 +707,7 @@ def stack_variable(name: str, *skip_modules: str, depth: int = 1, locals_only: b
     """ determine variable value in calling stack/frames.
 
     :param name:            variable name.
-    :param skip_modules:    module names to skip (def=this ae.core module).
+    :param skip_modules:    module names to skip (def=see :data:`SKIPPED_MODULES` module constant).
     :param depth:           the calling level from which on to search (def=1 which refers the next deeper stack frame).
                             Pass 2 or a even higher value if you want to get the variable value from a deeper level
                             in the call stack.
@@ -716,19 +716,54 @@ def stack_variable(name: str, *skip_modules: str, depth: int = 1, locals_only: b
 
     This function has an alias named :func:`.stack_var`.
     """
-    if not skip_modules:
-        skip_modules = SKIPPED_MODULES
-    val = None
-    for frame in stack_frames(depth):
-        global_vars = frame.f_globals
-        variables = frame.f_locals if locals_only else global_vars
-        if global_vars.get('__name__') not in skip_modules and name in variables:
-            val = variables[name]
-            break
-    return val
+    global_vars, local_vars, deep = stack_vars(*skip_modules, find_name=name, min_depth=depth + 1)  # +1 -> stack_vars()
+    if locals_only:
+        if name in global_vars:
+            while global_vars and name not in local_vars:
+                global_vars, local_vars, deep = stack_vars(*skip_modules, find_name=name, min_depth=deep + 1)
+        variables = local_vars
+    else:
+        variables = global_vars
+    return variables.get(name)
 
 
 stack_var = stack_variable          #: alias of function :func:`.stack_variable`
+
+
+def stack_variables(*skip_modules: str, find_name: str = '', max_depth: int = 0, min_depth: int = 1
+                    ) -> Tuple[Dict[str, Any], Dict[str, Any], int]:
+    """ determine global and local variables in calling stack/frames.
+
+    :param skip_modules:    module names to skip (def=see :data:`SKIPPED_MODULES` module constant).
+    :param find_name:       if passed then the returned stack frame must contain a variable with the passed name.
+    :param max_depth:       the depth in the call stack from which to return the variables. if this argument
+                            and :paramref:`~stack_variable.find_name` get not passed then
+                            the variables of the top stack frame will be returned.
+    :param min_depth:       the calling level from which on to search (def=1 which refers the next deeper stack frame).
+                            Pass 2 or a even higher value if you want to get the variable value from a deeper level
+                            in the call stack.
+    :return:                tuple of the global and local variable dicts and the depth in the call stack.
+
+    This function has an alias named :func:`.stack_vars`.
+    """
+    if not skip_modules:
+        skip_modules = SKIPPED_MODULES
+    glo = loc = dict()
+    depth = min_depth
+    for frame in stack_frames(min_depth):
+        depth += 1
+        glo, loc = frame.f_globals, frame.f_locals
+
+        if glo.get('__name__') in skip_modules:
+            continue
+        if find_name and (find_name in glo or find_name in loc):
+            break
+        if max_depth and depth > max_depth:
+            break
+    return glo, loc, depth - 1
+
+
+stack_vars = stack_variables        #: alias of function :func:`.stack_variables`
 
 
 def sys_env_dict(file: str = __file__) -> Dict[str, Any]:

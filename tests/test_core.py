@@ -24,7 +24,7 @@ from ae.core import (
     module_callable, module_name,
     parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, sys_platform, to_ascii,
     try_call, try_eval, try_exec,
-    AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED)
+    AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED, stack_vars)
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
@@ -348,7 +348,7 @@ class TestCoreHelpers:
 
         alt_format = "%d.%m.%Y %H:%M:%S.%f+%z"
         assert parse_date('2033-1-2 3:4:5.6', alt_format, replace=dict(microsecond=0)) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=0)
+            year=2033, month=1, day=2, hour=3, minute=4, second=5)
         assert parse_date('2033-1-2 3:4:5.6', alt_format, ret_date=True) == datetime.date(year=2033, month=1, day=2)
         assert parse_date('2033-1-2 3:4:5.6', alt_format, ret_date=None) == datetime.datetime(
             year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
@@ -411,7 +411,30 @@ class TestCoreHelpers:
             assert getattr(frame, 'f_globals')
             assert getattr(frame, 'f_locals')
 
-    def test_stack_var(self):
+    def test_stack_var_module(self):
+        assert module_var
+        assert stack_var('module_var') == 'module_var_val'
+        assert stack_var('module_var', depth=2) == 'module_var_val'
+        assert stack_var('module_var', locals_only=True) is None
+        assert stack_var('module_var', 'test_core') is None
+        assert stack_var('module_var', 'ae.core', 'test_core') is None
+        assert stack_var('module_var', depth=3) is None
+
+    def test_stack_var_func(self):
+        _func_var = 'func_var_val'
+
+        assert _func_var
+        assert stack_var('_func_var', 'ae.core', locals_only=True) == 'func_var_val'
+        assert stack_var('_func_var', locals_only=True) == 'func_var_val'
+        assert stack_var('_func_var', depth=0, locals_only=True) == 'func_var_val'
+        assert stack_var('_func_var', depth=2, locals_only=True) == 'func_var_val'
+        assert stack_var('_func_var') is None
+        assert stack_var('_func_var', depth=0) is None
+        assert stack_var('_func_var', 'test_core', locals_only=True) is None
+        assert stack_var('_func_var', 'ae.core', 'test_core', locals_only=True) is None
+        assert stack_var('_func_var', depth=3, locals_only=True) is None
+
+    def test_stack_var_inner_func(self):
         def _inner_func():
             _inner_var = 'inner_var_val'
             assert stack_var('_inner_var', depth=0, locals_only=True) == 'inner_var_val'
@@ -461,6 +484,13 @@ class TestCoreHelpers:
         assert stack_var('module_var', 'test_core') is None
         assert stack_var('module_var', 'ae.core', 'test_core') is None
         assert stack_var('module_var', depth=3) is None
+
+    def test_stack_vars(self):
+        glo, loc, deep = stack_vars(max_depth=3)
+        assert deep == 3
+
+        glo, loc, deep = stack_vars(find_name='module_var')
+        assert glo.get('module_var') == 'module_var_val'
 
     def test_sys_env_dict(self):
         assert sys_env_dict().get('python_ver')
