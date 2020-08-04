@@ -409,7 +409,7 @@ class TestCoreHelpers:
         for frame in stack_frames():
             assert frame
             assert getattr(frame, 'f_globals')
-            assert getattr(frame, 'f_locals')
+            # if pytest runs from terminal then f_locals is missing in highest frame: assert getattr(frame, 'f_locals')
 
     def test_stack_var_module(self):
         assert module_var
@@ -489,7 +489,7 @@ class TestCoreHelpers:
         glo, loc, deep = stack_vars(max_depth=3)
         assert deep == 3
 
-        glo, loc, deep = stack_vars(find_name='module_var')
+        glo, loc, deep = stack_vars(min_depth=2, find_name='module_var')    # min_depth needed for this stack frame
         assert glo.get('module_var') == 'module_var_val'
 
     def test_sys_env_dict(self):

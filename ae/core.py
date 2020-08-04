@@ -275,7 +275,7 @@ from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextI
 from types import ModuleType
 
 
-__version__ = '0.0.39'                          #: actual version of this portion/package/module
+__version__ = '0.0.40'                          #: actual version of this portion/package/module
 
 
 DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
@@ -283,28 +283,28 @@ DATE_ISO: str = '%Y-%m-%d'                      #: ISO string format for date va
 
 DEF_ENCODE_ERRORS: str = 'backslashreplace'     #: default encode error handling for UnicodeEncodeErrors
 DEF_ENCODING: str = 'ascii'
-""" core encoding that will always work independent from destination (console, file system, XMLParser, ...)."""
-
-DEBUG_LEVELS: Dict[int, str] = {0: 'disabled', 1: 'enabled', 2: 'verbose', 3: 'timestamped'}
-""" numeric ids and names of all supported debug levels
+""" core encoding that will always work independent from destination (console, file system, XMLParser, ...).
 
 .. _debug-level-constants:
 
 """
-# DON'T RE-ORDER - using DEBUG_LEVELS doc-string as sphinx hyperlink label to the DEBUG_ constants underneath #
+# DON'T RE-ORDER: using DEF_ENCODING doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
 DEBUG_LEVEL_DISABLED: int = 0       #: lowest debug level - only display logging levels ERROR/CRITICAL.
 DEBUG_LEVEL_ENABLED: int = 1        #: minimum debugging info - display logging levels WARNING or higher.
 DEBUG_LEVEL_VERBOSE: int = 2        #: verbose debug info - display logging levels INFO/DEBUG or higher.
 
+DEBUG_LEVELS: Dict[int, str] = {DEBUG_LEVEL_DISABLED: 'disabled', DEBUG_LEVEL_ENABLED: 'enabled',
+                                DEBUG_LEVEL_VERBOSE: 'verbose'}
+""" numeric ids and names of all supported debug levels. """
+
 LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.WARNING, DEBUG_LEVEL_ENABLED: logging.INFO,
                                   DEBUG_LEVEL_VERBOSE: logging.DEBUG}
-""" association between ae debug levels and python logging levels.
-"""
+""" association between ae debug levels and python logging levels. """
 
 HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidden in print/repr output (not if verbose)
 
 SKIPPED_MODULES = ('ae.core', 'ae.console', 'ae.gui_app',
-                   'ae.kivy_app', 'ae.enaml_app',
+                   'ae.kivy_app', 'ae.enaml_app', 'ae.lisz_app_data',
                    'ae.beeware_app', 'ae.pyglet_app', 'ae.pygobject_app', 'ae.dabo_app',
                    'ae.qpython_app', 'ae.appjar_app')
 """ skipped modules used as default by :func:`module_name` and :func:`stack_variable` """
@@ -687,16 +687,17 @@ def round_traditional(num_value: float, num_digits: int = 0) -> float:
     return round(num_value + 10 ** (-len(str(num_value)) - 1), num_digits)
 
 
-def stack_frames(depth: int = 1) -> Generator:  # Generator[frame, None, None]
-    """ generator diving deeper into the call stack from the level given in :paramref:`~stack_frames.depth`.
+def stack_frames(depth: int = 2) -> Generator:  # Generator[frame, None, None]
+    """ generator returning the call stack frame from the level given in :paramref:`~stack_frames.depth`.
 
-    :param depth:           the calling level from which on to start (def=1 which refers the next deeper stack frame).
-                            Pass 2 or a even higher value if you want to start with a deeper frame in the call stack.
+    :param depth:           the calling level from which on to start (def=2 which refers the next deeper stack frame
+                            of the caller of this function).
+                            Pass 3 or a higher value if you want to start with an even deeper frame in the call stack.
     :return:                The stack frame of a deeper level within the call stack.
     """
     try:
         while True:
-            # noinspection PyProtectedMember
+            # noinspection PyProtectedMember,PyUnresolvedReferences
             yield sys._getframe(depth)          # pylint: disable=protected-access
             depth += 1
     except (TypeError, AttributeError, ValueError):
@@ -730,17 +731,18 @@ def stack_variable(name: str, *skip_modules: str, depth: int = 1, locals_only: b
 stack_var = stack_variable          #: alias of function :func:`.stack_variable`
 
 
-def stack_variables(*skip_modules: str, find_name: str = '', max_depth: int = 0, min_depth: int = 1
+def stack_variables(*skip_modules: str, find_name: str = '', max_depth: int = 0, min_depth: int = 3
                     ) -> Tuple[Dict[str, Any], Dict[str, Any], int]:
     """ determine global and local variables in calling stack/frames.
 
     :param skip_modules:    module names to skip (def=see :data:`SKIPPED_MODULES` module constant).
     :param find_name:       if passed then the returned stack frame must contain a variable with the passed name.
-    :param max_depth:       the depth in the call stack from which to return the variables. if this argument
+    :param max_depth:       the maximum depth in the call stack from which to return the variables. if this argument
                             and :paramref:`~stack_variable.find_name` get not passed then
                             the variables of the top stack frame will be returned.
-    :param min_depth:       the calling level from which on to search (def=1 which refers the next deeper stack frame).
-                            Pass 2 or a even higher value if you want to get the variable value from a deeper level
+    :param min_depth:       the calling level from which on to search (def=3 which refers the next deeper stack frame
+                            of the caller of this function).
+                            Pass 4 or a higher value if you want to get the variable value from a deeper level
                             in the call stack.
     :return:                tuple of the global and local variable dicts and the depth in the call stack.
 
@@ -750,7 +752,7 @@ def stack_variables(*skip_modules: str, find_name: str = '', max_depth: int = 0,
         skip_modules = SKIPPED_MODULES
     glo = loc = dict()
     depth = min_depth
-    for frame in stack_frames(min_depth):
+    for frame in stack_frames(depth=min_depth):
         depth += 1
         glo, loc = frame.f_globals, frame.f_locals
 
@@ -829,7 +831,7 @@ def sys_platform() -> str:
 def to_ascii(unicode_str: str) -> str:
     """ converts unicode string into ascii representation.
 
-    Useful for fuzzy string comparision; inspired by MiniQuark's answer
+    Useful for fuzzy string compare; inspired by MiniQuark's answer
     in: https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-in-a-python-unicode-string
 
     :param unicode_str:     string to convert.
