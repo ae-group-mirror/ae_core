@@ -1,14 +1,11 @@
 """ test doc string for AppBase.app_title tests. """
 
 import datetime
-import datetime as test_dt
 import logging
 import os
 import sys
-import textwrap
 import threading
-from typing import cast
-from types import ModuleType
+from typing import cast, Any
 
 import pytest
 try:
@@ -16,78 +13,20 @@ try:
 except ImportError:
     from .conftest import delete_files
 
+from ae.system import DATE_ISO, DATE_TIME_ISO
 # noinspection PyProtectedMember
 from ae.core import (
-    APP_KEY_SEP, DATE_ISO, DATE_TIME_ISO, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
+    APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
     activate_multi_threading, _deactivate_multi_threading, main_app_instance,
-    correct_email, correct_phone, env_str, exec_with_return, force_encoding, full_stack_trace, hide_dup_line_prefix,
-    module_callable, module_name,
-    parse_date, po, round_traditional, stack_frames, stack_var, sys_env_dict, sys_env_text, sys_platform, to_ascii,
-    try_call, try_eval, try_exec,
-    AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED, stack_vars)
+    force_encoding, hide_dup_line_prefix,
+    po, round_traditional, to_ascii,
+    AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED)
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
-module_var = 'module_var_val'   # used for stack_var()/try_exec() tests
 
 
 class TestCoreHelpers:
-    def test_env_var_unconverted(self):
-        ev = 'PATH'
-        assert env_str(ev)
-
-    def test_env_var_case_conversions(self):
-        ev = 'path'
-        assert env_str(ev, convert_name=True)
-
-        ev = 'camelCase'
-        vv = "test variable value"
-        os.environ['CAMEL_CASE'] = vv
-        assert env_str(ev, convert_name=True) == vv
-
-        ev = 'CamelCase'
-        vv = "test variable value"
-        os.environ['_CAMEL_CASE'] = vv
-        assert env_str(ev, convert_name=True) == vv
-
-    def test_env_var_non_alpha_num_conversions(self):
-        ev = 'non\talpha\\num/chars-69'
-        vv = "test variable value"
-        os.environ['NON_ALPHA_NUM_CHARS_69'] = vv
-        assert env_str(ev, convert_name=True) == vv
-
-    def test_exec_with_return(self):
-        assert exec_with_return("") is None
-        assert exec_with_return('1 + 2') == 3
-        assert exec_with_return('a = 1 + 2; a') == 3
-        assert exec_with_return('a = 1 + 2; a + 3') == 6
-        assert exec_with_return('\na = 1 + 2\na\n') == 3
-
-        syn_err = 'if :'
-        with pytest.raises(SyntaxError):
-            exec_with_return(syn_err)
-        assert exec_with_return(syn_err, ignored_exceptions=(SyntaxError, )) is None
-
-        if_stmt = """
-                            if 1 + 2 == 3:
-                                a = 6
-                            else:
-                                a = 9
-                            a
-        """
-        with pytest.raises(IndentationError):
-            exec_with_return(if_stmt)
-        if_stmt = textwrap.dedent(if_stmt)
-        assert exec_with_return(if_stmt) == 6
-
-        assert exec_with_return('a = b + 6; a', glo_vars=dict(b=3)) == 9
-        assert exec_with_return('a = b + 6; a', loc_vars=dict(b=3)) == 9
-        assert exec_with_return('a = b + 6; a', glo_vars=dict(b=69), loc_vars=dict(b=3)) == 9
-
-        loc_vars = dict(b=3)
-        assert exec_with_return('a = b + 6', glo_vars=dict(b=69), loc_vars=loc_vars) is None
-        assert loc_vars.get('a') == 9
-
     def test_force_encoding_bytes(self):
         s = 'äöü'
 
@@ -119,13 +58,6 @@ class TestCoreHelpers:
         with pytest.raises(TypeError):
             assert force_encoding(s, encoding=cast(str, None)) == '\\xe4\\xf6\\xfc'
 
-    def test_full_stack_trace(self):
-        try:
-            raise ValueError
-        except ValueError as ex:
-            # print(full_stack_trace(ex))
-            assert full_stack_trace(ex)
-
     def test_hide_dup_line_prefix(self):
         l1 = "<t_s_t>"
         l2 = l1
@@ -135,141 +67,6 @@ class TestCoreHelpers:
         assert hide_dup_line_prefix(l2, l1) == " " * len(l1)
         l2 = l1[:3] + l1
         assert hide_dup_line_prefix(l1, l2) == " " * 3 + l1
-
-    def test_module_callable_not_exists(self):
-        """ first test with non-existing module, second test with non-existing function """
-        entry_point = 'test_module_name:test_module_func'
-        ret = module_callable(entry_point)
-        assert ret == (None, None)
-
-        module_path = 'tests'
-        module_file = os.path.join(module_path, entry_point.split(':')[0] + '.py')
-        with open(module_file, 'w') as file_handle:
-            file_handle.write("""def some_func(*args, **kwargs):\n    pass\n""")
-        try:
-            ret = module_callable(entry_point, module_path=module_path)
-            assert ret[0]
-            assert type(ret[0]) is ModuleType
-            assert ret[1] is None
-        finally:
-            if os.path.exists(module_file):
-                os.remove(module_file)
-
-    def test_module_callable_with_args(self):
-        module_path = 'tests'
-        entry_point = 'test_module_name:test_module_func'
-        mod_name, func_name = entry_point.split(':')
-        module_file = os.path.join(module_path, mod_name + '.py')
-        with open(module_file, 'w') as file_handle:
-            file_handle.write(f"""def {func_name}(*args, **kwargs):\n    return args, kwargs\n""")
-        try:
-            args = (1, '2')
-            kwargs = dict(kwarg1=1, kwarg2='2')
-            ret = module_callable(entry_point, module_path=module_path)
-            assert ret[0]
-            assert type(ret[0]) is ModuleType
-            assert ret[1]
-            assert callable(type(ret[1]))
-
-            call_ret = try_call(ret[1], *args, **kwargs)
-            assert call_ret
-            assert call_ret[0] == args
-            assert call_ret[1] == kwargs
-        finally:
-            if os.path.exists(module_file):
-                os.remove(module_file)
-
-        # test already imported module
-        module, callee = module_callable('textwrap:indent')
-        assert type(module) is ModuleType
-        assert callable(callee)
-        assert callee is textwrap.indent
-
-    def test_module_callable_wrong_args(self):
-        module_path = 'tests'
-        entry_point = 'test_module_name:test_module_func'
-        mod_name, func_name = entry_point.split(':')
-        module_file = os.path.join(module_path, mod_name + '.py')
-        with open(module_file, 'w') as file_handle:
-            file_handle.write(f"""def {func_name}(arg1, args2, kwarg1='default'):\n    return arg1, arg2, kwarg1\n""")
-        try:
-            args = (1, '2')
-            kwargs = dict(kwarg1=1, kwarg2='2')
-
-            module, callee = module_callable(entry_point, module_path=module_path)
-            assert type(module) is ModuleType
-            assert callable(callee)
-
-            with pytest.raises(TypeError):
-                try_call(callee, *args, **kwargs)
-            ret = try_call(callee, *args, ignored_exceptions=(TypeError, ), **kwargs)
-            assert ret is None
-        finally:
-            if os.path.exists(module_file):
-                os.remove(module_file)
-
-    def test_module_name(self):
-        assert module_name(cast(str, None)) == 'ae.core'
-        assert module_name(__name__) == 'ae.core'
-        assert module_name(__name__, depth=0) == 'ae.core'
-        assert module_name(__name__, depth=-1) == 'ae.core'
-        assert module_name(__name__, depth=-2) == 'ae.core'
-        assert module_name('') == 'ae.core'
-        assert module_name('xxx_test') == 'ae.core'
-
-        assert module_name() == 'test_core'
-        assert module_name(depth=-1) == 'test_core'
-        assert module_name('ae.core') == 'test_core'
-        assert module_name(depth=2) == 'test_core'
-        assert module_name(depth=3) == 'test_core'
-
-        '''
-        assert module_name('ae.core', 'test_core') == '_pytest.python'
-        assert module_name('ae.core', __name__) == '_pytest.python'
-        assert module_name(__name__, depth=3) == '_pytest.python'
-        assert module_name(depth=4) == '_pytest.python'
-
-        assert module_name('ae.core', __name__, '_pytest.python') == 'pluggy.callers'
-        assert module_name('ae.core', __name__, '_pytest.python', depth=4) == 'pluggy.callers'
-        assert module_name(depth=5) == 'pluggy.callers'
-
-        assert module_name('ae.core', __name__, '_pytest.python', 'pluggy.callers') == 'pluggy.manager'
-        assert module_name(depth=6) == 'pluggy.manager'
-        assert module_name(depth=7) == 'pluggy.manager'
-
-        assert module_name(
-            'ae.core', __name__, '_pytest.python', 'pluggy.callers', 'pluggy.manager') == 'pluggy.hooks'
-        assert module_name(depth=8) == 'pluggy.hooks'
-
-        assert module_name(depth=9) == '_pytest.python'
-
-        assert module_name(depth=10) == '_pytest.runner'
-
-        assert module_name(depth=11) == 'pluggy.callers'
-
-        assert module_name(depth=12) == 'pluggy.manager'
-        assert module_name(depth=13) == 'pluggy.manager'
-
-        assert module_name(depth=14) == 'pluggy.hooks'
-
-        assert module_name(depth=15) == '_pytest.runner'
-        assert module_name(depth=16) == '_pytest.runner'
-        assert module_name(depth=17) == '_pytest.runner'
-        assert module_name(depth=18) == '_pytest.runner'
-
-        assert module_name(depth=36) == 'pluggy.hooks'
-
-        assert module_name(depth=37) == '_pytest.config'
-
-        assert module_name(depth=38) == '__main__'
-
-        assert module_name(depth=cast(int, None)) is None
-        # differs in (run, debug, coverage) mode and from where it runs (PyCharm, console)
-        assert module_name(depth=39) in (None, '_pydev_imps._pydev_execfile', 'coverage.execfile', 'runpy')
-        assert module_name(depth=54) is None
-        assert module_name(depth=69) is None
-        assert module_name(depth=369) is None
-        '''
 
     def test_print_out_basics(self, capsys):
         po()
@@ -308,93 +105,6 @@ class TestCoreHelpers:
         out, err = capsys.readouterr()
         assert out == '' and err == ''
 
-    def test_parse_date(self):
-        assert parse_date('2033-12-24') == datetime.datetime(year=2033, month=12, day=24)
-        assert parse_date('2033-12-24', ret_date=True) == datetime.date(year=2033, month=12, day=24)
-        assert parse_date('2033-12-24', ret_date=None) == datetime.date(year=2033, month=12, day=24)
-
-        assert parse_date('2033-12-24 12:59') == datetime.datetime(year=2033, month=12, day=24, hour=12, minute=59)
-        assert parse_date('2033-12-24 12:59', ret_date=True) == datetime.date(year=2033, month=12, day=24)
-        assert parse_date('2033-12-24 12:59', ret_date=None) == datetime.datetime(year=2033, month=12, day=24,
-                                                                                  hour=12, minute=59)
-
-        assert parse_date('2033-12-24T12:59') == datetime.datetime(year=2033, month=12, day=24, hour=12, minute=59)
-        assert parse_date('2033-12-24T12:59', ret_date=True) == datetime.date(year=2033, month=12, day=24)
-        assert parse_date('2033-12-24T12:59', ret_date=None) == datetime.datetime(year=2033, month=12, day=24,
-                                                                                  hour=12, minute=59)
-
-        assert parse_date('2033-12-24 12:59:12') == datetime.datetime(year=2033, month=12, day=24, hour=12,
-                                                                      minute=59, second=12)
-        assert parse_date('2033-12-24 12:59:12', ret_date=True) == datetime.date(year=2033, month=12, day=24)
-        assert parse_date('2033-12-24 12:59:12', ret_date=None) == datetime.datetime(year=2033, month=12, day=24,
-                                                                                     hour=12, minute=59, second=12)
-
-        assert parse_date('2033-12-24T12:59:12') == datetime.datetime(year=2033, month=12, day=24,
-                                                                      hour=12, minute=59, second=12)
-        assert parse_date('2033-12-24T12:59:12', ret_date=True) == datetime.date(year=2033, month=12, day=24)
-        assert parse_date('2033-12-24T12:59:12', ret_date=None) == datetime.datetime(year=2033, month=12, day=24,
-                                                                                     hour=12, minute=59, second=12)
-
-        assert parse_date('2033-1-2 3:4:5') == datetime.datetime(year=2033, month=1, day=2, hour=3, minute=4, second=5)
-        assert parse_date('2033-1-2 3:4:5', ret_date=True) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('2033-1-2 3:4:5', ret_date=None) == datetime.datetime(year=2033, month=1, day=2,
-                                                                                hour=3, minute=4, second=5)
-
-        assert parse_date('2033-1-2 3:4:5.6') == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-        assert parse_date('2033-1-2 3:4:5.6', ret_date=True) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('2033-1-2 3:4:5.6', ret_date=None) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-
-        alt_format = "%d.%m.%Y %H:%M:%S.%f+%z"
-        assert parse_date('2033-1-2 3:4:5.6', alt_format, replace=dict(microsecond=0)) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5)
-        assert parse_date('2033-1-2 3:4:5.6', alt_format, ret_date=True) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('2033-1-2 3:4:5.6', alt_format, ret_date=None) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-
-        alt_format = "%d.%m.%Y %H:%M:%S.%f"
-        assert parse_date('2.1.2033 3:4:5.6', alt_format) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-        assert parse_date('2.1.2033 3:4:5.6', alt_format, ret_date=True) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('2.1.2033 3:4:5.6', alt_format, ret_date=None) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-
-        assert parse_date('2.1.2033', alt_format) == datetime.datetime(year=2033, month=1, day=2)
-        assert parse_date('2.1.2033', alt_format, ret_date=True) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('2.1.2033', alt_format, ret_date=None) == datetime.date(year=2033, month=1, day=2)
-
-        alt_format = "%y.%m.%d_%H:%M:%S.%f"
-        dts = ('_', )
-        assert parse_date('33.1.2_3:4:5.6', alt_format) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-        assert parse_date('33.1.2_3:4:5.6', alt_format, ret_date=True) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('33.1.2_3:4:5.6', alt_format, ret_date=None) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('33.1.2_3:4:5.6', alt_format, ret_date=None, dt_seps=dts) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-
-        assert parse_date('33.1.2', alt_format) is None
-        assert parse_date('33.1.2', alt_format, dt_seps=dts) == datetime.datetime(year=2033, month=1, day=2)
-        assert parse_date('33.1.2', alt_format, ret_date=True, dt_seps=dts) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('33.1.2', alt_format, ret_date=None, dt_seps=dts) == datetime.date(year=2033, month=1, day=2)
-
-        dts = ('T', ' ', 'x', '_', )
-        assert parse_date('33.1.2_3:4:5.6', alt_format, ret_date=None, dt_seps=dts) == datetime.datetime(
-            year=2033, month=1, day=2, hour=3, minute=4, second=5, microsecond=600000)
-        assert parse_date('33.1.2', alt_format) is None
-        assert parse_date('33.1.2', alt_format, dt_seps=dts) == datetime.datetime(year=2033, month=1, day=2)
-        assert parse_date('33.1.2', alt_format, ret_date=True, dt_seps=dts) == datetime.date(year=2033, month=1, day=2)
-        assert parse_date('33.1.2', alt_format, ret_date=None, dt_seps=dts) == datetime.date(year=2033, month=1, day=2)
-
-        alt_format = '%Y%m%d %H%M%S.%f'
-        assert parse_date('20330102 122748.69', alt_format) == datetime.datetime(
-            year=2033, month=1, day=2, hour=12, minute=27, second=48, microsecond=690000)
-
-        assert parse_date('2033-12-24 12:59:12:36') is None
-        assert parse_date('xx-yy-zz a:b:c') is None
-        with pytest.raises(AttributeError):
-            parse_date(cast(str, None))
-
     def test_round_traditional(self):
         assert round_traditional(1.01) == 1
         assert round_traditional(10.1, -1) == 10
@@ -405,372 +115,8 @@ class TestCoreHelpers:
         assert round_traditional(0.075, 2) == 0.08
         assert round(0.075, 2) == 0.07
 
-    def test_stack_frames(self):
-        for frame in stack_frames():
-            assert frame
-            assert getattr(frame, 'f_globals')
-            # if pytest runs from terminal then f_locals is missing in highest frame: assert getattr(frame, 'f_locals')
-
-    def test_stack_var_module(self):
-        assert module_var
-        assert stack_var('module_var') == 'module_var_val'
-        assert stack_var('module_var', depth=2) == 'module_var_val'
-        assert stack_var('module_var', locals_only=True) is None
-        assert stack_var('module_var', 'test_core') is None
-        assert stack_var('module_var', 'ae.core', 'test_core') is None
-        assert stack_var('module_var', depth=3) is None
-
-    def test_stack_var_func(self):
-        _func_var = 'func_var_val'
-
-        assert _func_var
-        assert stack_var('_func_var', 'ae.core', locals_only=True) == 'func_var_val'
-        assert stack_var('_func_var', locals_only=True) == 'func_var_val'
-        assert stack_var('_func_var', depth=0, locals_only=True) == 'func_var_val'
-        assert stack_var('_func_var', depth=2, locals_only=True) == 'func_var_val'
-        assert stack_var('_func_var') is None
-        assert stack_var('_func_var', depth=0) is None
-        assert stack_var('_func_var', 'test_core', locals_only=True) is None
-        assert stack_var('_func_var', 'ae.core', 'test_core', locals_only=True) is None
-        assert stack_var('_func_var', depth=3, locals_only=True) is None
-
-    def test_stack_var_inner_func(self):
-        def _inner_func():
-            _inner_var = 'inner_var_val'
-            assert stack_var('_inner_var', depth=0, locals_only=True) == 'inner_var_val'
-            assert stack_var('_inner_var', depth=2, locals_only=True) == 'inner_var_val'
-            assert stack_var('_inner_var', 'ae.core', depth=2, locals_only=True) == 'inner_var_val'
-            assert stack_var('_inner_var') is None
-            assert stack_var('_inner_var', 'test_core', locals_only=True) is None
-            assert stack_var('_inner_var', 'ae.core', 'test_core', locals_only=True) is None
-            assert stack_var('_inner_var', depth=0) is None
-            assert stack_var('_inner_var', depth=3, locals_only=True) is None
-
-            assert stack_var('_outer_var', 'ae.core', locals_only=True) == 'outer_var_val'
-            assert stack_var('_outer_var', locals_only=True) == 'outer_var_val'
-            assert stack_var('_outer_var', depth=0, locals_only=True) == 'outer_var_val'
-            assert stack_var('_outer_var', depth=3, locals_only=True) == 'outer_var_val'
-            assert stack_var('_outer_var') is None
-            assert stack_var('_outer_var', 'test_core', locals_only=True) is None
-            assert stack_var('_outer_var', 'ae.core', 'test_core', locals_only=True) is None
-            assert stack_var('_outer_var', depth=0) is None
-            assert stack_var('_outer_var', depth=4, locals_only=True) is None
-
-            assert stack_var('module_var') == 'module_var_val'
-            assert stack_var('module_var', depth=3) == 'module_var_val'
-            assert stack_var('module_var', locals_only=True) is None
-            assert stack_var('module_var', 'test_core') is None
-            assert stack_var('module_var', 'ae.core', 'test_core') is None
-            assert stack_var('module_var', depth=4) is None
-
-        _outer_var = 'outer_var_val'
-        _inner_func()
-
-        assert _outer_var
-        assert stack_var('_outer_var', 'ae.core', locals_only=True) == 'outer_var_val'
-        assert stack_var('_outer_var', locals_only=True) == 'outer_var_val'
-        assert stack_var('_outer_var', depth=0, locals_only=True) == 'outer_var_val'
-        assert stack_var('_outer_var', depth=2, locals_only=True) == 'outer_var_val'
-        assert stack_var('_outer_var') is None
-        assert stack_var('_outer_var', depth=0) is None
-        assert stack_var('_outer_var', 'test_core', locals_only=True) is None
-        assert stack_var('_outer_var', 'ae.core', 'test_core', locals_only=True) is None
-        assert stack_var('_outer_var', depth=3, locals_only=True) is None
-
-        assert module_var
-        assert stack_var('module_var') == 'module_var_val'
-        assert stack_var('module_var', depth=2) == 'module_var_val'
-        assert stack_var('module_var', locals_only=True) is None
-        assert stack_var('module_var', 'test_core') is None
-        assert stack_var('module_var', 'ae.core', 'test_core') is None
-        assert stack_var('module_var', depth=3) is None
-
-    def test_stack_vars(self):
-        glo, loc, deep = stack_vars(max_depth=3)
-        assert deep == 3
-
-        glo, loc, deep = stack_vars(min_depth=2, find_name='module_var')    # min_depth needed for this stack frame
-        assert glo.get('module_var') == 'module_var_val'
-
-    def test_sys_env_dict(self):
-        assert sys_env_dict().get('python_ver')
-        assert sys_env_dict().get('cwd')
-        assert sys_env_dict().get('frozen') is False
-
-        assert sys_env_dict().get('bundle_dir') is None
-        sys.frozen = True
-        assert sys_env_dict().get('bundle_dir')
-        del sys.__dict__['frozen']
-        assert sys_env_dict().get('bundle_dir') is None
-
-    def test_sys_env_text(self):
-        assert isinstance(sys_env_text(), str)
-        assert 'python_ver' in sys_env_text()
-        ret = sys_env_text(extra_sys_env_dict=dict(test_add='TstAdd'))
-        assert 'test_add' in ret
-        assert 'TstAdd' in ret
-
-    def test_sys_platform_android(self):
-        try:
-            os.environ['ANDROID_ARGUMENT'] = 'tst'
-            assert sys_platform() == 'android'
-        finally:
-            os.environ.pop('ANDROID_ARGUMENT', None)
-
-        try:
-            os.environ['KIVY_BUILD'] = 'android'
-            assert sys_platform() == 'android'
-        finally:
-            os.environ.pop('KIVY_BUILD', None)
-
-    def test_sys_platform_cygwin(self):
-        old_platform = sys.platform
-        try:
-            sys.platform = 'cygwin'
-            assert sys_platform() == 'cygwin'
-        finally:
-            sys.platform = old_platform
-
-    def test_sys_platform_darwin(self):
-        old_platform = sys.platform
-        try:
-            sys.platform = 'darwin'
-            assert sys_platform() == 'darwin'
-        finally:
-            sys.platform = old_platform
-
-    def test_sys_platform_freebsd(self):
-        old_platform = sys.platform
-        try:
-            sys.platform = 'freebsd'
-            assert sys_platform() == 'freebsd'
-        finally:
-            sys.platform = old_platform
-
-    def test_sys_platform_ios(self):
-        try:
-            os.environ['KIVY_BUILD'] = 'ios'
-            assert sys_platform() == 'ios'
-        finally:
-            os.environ.pop('KIVY_BUILD', None)
-
-    def test_sys_platform_win32(self):
-        old_platform = sys.platform
-        try:
-            sys.platform = 'win32'
-            assert sys_platform() == 'win32'
-        finally:
-            sys.platform = old_platform
-
     def test_to_ascii(self):
         assert to_ascii('äöü') == 'aou'
-
-    def test_try_call(self):
-        assert try_call(str, 123) == "123"
-        assert try_call(bytes, '123', encoding='ascii') == b"123"
-        assert try_call(int, '123') == 123
-
-        call_arg = "no-number"
-        with pytest.raises(ValueError):
-            assert try_call(int, call_arg)
-        assert try_call(int, call_arg, ignored_exceptions=(ValueError, )) is None
-
-    def test_try_eval(self):
-        assert try_eval("str(123)") == "123"
-        assert try_eval("str(bytes(b'123'), encoding='ascii')") == "123"
-        assert try_eval("int('123')") == 123
-
-        eval_str = "int('no-number')"
-        with pytest.raises(ValueError):
-            assert try_eval(eval_str)
-        assert try_eval(eval_str, ignored_exceptions=(ValueError, )) is None
-        with pytest.raises(TypeError):      # list with ignored exceptions is not accepted
-            assert try_eval(eval_str, ignored_exceptions=cast(tuple, [ValueError, ])) is None
-
-        assert try_eval('b + 6', glo_vars=dict(b=3)) == 9
-        assert try_eval('b + 6', loc_vars=dict(b=3)) == 9
-        assert try_eval('b + 6', glo_vars=dict(b=33), loc_vars=dict(b=3)) == 9
-
-    def test_try_exec(self):
-        assert try_exec('a = 1 + 2; a') == 3
-        assert try_exec('a = 1 + 2; a + 3') == 6
-        assert try_exec('a = b + 6; a', glo_vars=dict(b=3)) == 9
-        assert try_exec('a = b + 6; a', loc_vars=dict(b=3)) == 9
-        assert try_exec('a = b + 6; a', glo_vars=dict(b=69), loc_vars=dict(b=3)) == 9
-
-        code_block = "a=1+2; module_var"
-        with pytest.raises(NameError):
-            assert try_exec(code_block) == module_var
-        assert try_exec(code_block, ignored_exceptions=(NameError, )) is None
-        assert try_exec(code_block, glo_vars=globals()) == module_var
-
-        # check ae.core datetime/DATE_ISO context (globals)
-        dt_val = test_dt.datetime.now()
-        dt_str = test_dt.datetime.strftime(dt_val, DATE_ISO)
-        assert try_exec("dt = _; datetime.datetime.strftime(dt, DATE_ISO)", loc_vars={'_': dt_val}) == dt_str
-
-
-class TestOfflineContactValidation:
-    def test_correct_email(self):
-        # edge cases: empty string or None as email
-        assert correct_email('') == ('', False)
-        assert correct_email(cast(str, None)) == ('', False)
-        assert correct_email('test') == ('test', False)
-        assert correct_email('TesT') == ('TesT', False)
-        assert correct_email('TEST') == ('test', False)
-        r = list()
-        assert correct_email('', removed=r) == ('', False)
-        assert r == []
-        r = list()
-        assert correct_email(cast(str, None), removed=r) == ('', False)
-        assert r == []
-
-        # special characters !#$%&'*+-/=?^_`{|}~; are allowed in local part
-        r = list()
-        assert correct_email('john_smith@example.com', removed=r) == ('john_smith@example.com', False)
-        assert r == []
-        r = list()
-        assert correct_email('john?smith@example.com', removed=r) == ('john?smith@example.com', False)
-        assert r == []
-
-        # dot is not the first or last character unless quoted, and does not appear consecutively unless quoted
-        r = list()
-        assert correct_email(".john.smith@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["0:."]
-        r = list()
-        assert correct_email("john.smith.@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["10:."]
-        r = list()
-        assert correct_email("john..smith@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["5:."]
-        r = list()
-        assert correct_email('"john..smith"@example.com', removed=r) == ('"john..smith"@example.com', False)
-        assert r == []
-        r = list()
-        assert correct_email("john.smith@example..com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["19:."]
-
-        # space and "(),:;<>@[\] characters are allowed with restrictions (they are only allowed inside a quoted string,
-        # as described in the paragraph below, and in addition, a backslash or double-quote must be preceded
-        # by a backslash);
-        r = list()
-        assert correct_email(" john.smith@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["0: "]
-        r = list()
-        assert correct_email("john .smith@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["4: "]
-        r = list()
-        assert correct_email("john.smith @example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["10: "]
-        r = list()
-        assert correct_email("john.smith@ example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["11: "]
-        r = list()
-        assert correct_email("john.smith@ex ample.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["13: "]
-        r = list()
-        assert correct_email("john.smith@example .com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["18: "]
-        r = list()
-        assert correct_email("john.smith@example. com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["19: "]
-        r = list()
-        assert correct_email("john.smith@example.com  ", removed=r) == ("john.smith@example.com", True)
-        assert r == ["22: ", "23: "]
-        r = list()
-        assert correct_email('john(smith@example.com', removed=r) == ('johnsmith@example.com', True)
-        assert r == ["4:("]
-        r = list()
-        assert correct_email('"john(smith"@example.com', removed=r) == ('"john(smith"@example.com', False)
-        assert r == []
-
-        # comments at begin or end of local and domain part
-        r = list()
-        assert correct_email("john.smith(comment)@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["10:(comment)"]
-        r = list()
-        assert correct_email("(comment)john.smith@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["0:(comment)"]
-        r = list()
-        assert correct_email("john.smith@example.com(comment)", removed=r) == ("john.smith@example.com", True)
-        assert r == ["22:(comment)"]
-        r = list()
-        assert correct_email("john.smith@(comment)example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["11:(comment)"]
-        r = list()
-        assert correct_email(".john.smith@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["0:."]
-        r = list()
-        assert correct_email("john.smith.@example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["10:."]
-        r = list()
-        assert correct_email("john.smith@.example.com", removed=r) == ("john.smith@example.com", True)
-        assert r == ["11:."]
-        r = list()
-        assert correct_email("john.smith@example.com.", removed=r) == ("john.smith@example.com", True)
-        assert r == ["22:."]
-
-        # international characters above U+007F
-        r = list()
-        assert correct_email('Heinz.Hübner@example.com', removed=r) == ('Heinz.Hübner@example.com', False)
-        assert r == []
-
-        # quoted may exist as a dot separated entity within the local-part, or it may exist when the outermost
-        # .. quotes are the outermost characters of the local-part
-        r = list()
-        assert correct_email('abc."def".xyz@example.com', removed=r) == ('abc."def".xyz@example.com', False)
-        assert r == []
-        assert correct_email('"abc"@example.com', removed=r) == ('"abc"@example.com', False)
-        assert r == []
-        assert correct_email('abc"def"xyz@example.com', removed=r) == ('abcdefxyz@example.com', True)
-        assert r == ['3:"', '7:"']
-
-        # tests from https://en.wikipedia.org/wiki/Email_address
-        r = list()
-        assert correct_email('ex-indeed@strange-example.com', removed=r) == ('ex-indeed@strange-example.com', False)
-        assert r == []
-        r = list()
-        assert correct_email("#!$%&'*+-/=?^_`{}|~@example.org", removed=r) == ("#!$%&'*+-/=?^_`{}|~@example.org", False)
-        assert r == []
-        r = list()
-        assert correct_email('"()<>[]:,;@\\\\"!#$%&\'-/=?^_`{}| ~.a"@e.org', removed=r) \
-            == ('"()<>[]:,;@\\\\"!#$%&\'-/=?^_`{}| ~.a"@e.org', False)
-        assert r == []
-
-        r = list()
-        assert correct_email("A@e@x@ample.com", removed=r) == ("A@example.com", True)
-        assert r == ["3:@", "5:@"]
-        r = list()
-        assert correct_email('this is "not" \\allowed@example.com', removed=r) == ('thisisnotallowed@example.com', True)
-        assert r == ['4: ', '7: ', '8:"', '12:"', '13: ', '14:\\']
-
-    def test_correct_phone(self):
-        assert correct_phone(cast(str, None)) == ('', False)
-        assert correct_phone('') == ('', False)
-
-        r = list()
-        assert correct_phone('+4455667788', removed=r) == ('004455667788', True)
-        assert r == ["0:+"]
-
-        r = list()
-        assert correct_phone(' +4455667788', removed=r) == ('004455667788', True)
-        assert r == ["0: ", "1:+"]
-
-        r = list()
-        assert correct_phone('+004455667788', removed=r) == ('004455667788', True)
-        assert r == ["0:+"]
-
-        r = list()
-        assert correct_phone(' 44 5566/7788', removed=r) == ('4455667788', True)
-        assert r == ["0: ", "3: ", "8:/"]
-
-        r = list()
-        assert correct_phone(' 44 5566/7788-123', removed=r) == ('4455667788123', True)
-        assert r == ["0: ", "3: ", "8:/", "13:-"]
-
-        r = list()
-        assert correct_phone(' 44 5566/7788-123', removed=r, keep_1st_hyphen=True) == ('4455667788-123', True)
-        assert r == ["0: ", "3: ", "8:/"]
 
 
 class TestPrintingReplicator:
@@ -979,21 +325,21 @@ class TestAeLogging:
 
         log_file = 'test_threaded_sub_app_logging.log'
         tst_out = 'print-out to log file'
-        mp = "MAIN_"  # main/sub-app prefixes for log file names and print-outs
+        mp = "MAIN_"                    # main/sub-app prefixes for log file names and print-outs
         sp = "SUB__"
         try:
             app = AppBase('test_main_app_thread', app_name=mp, multi_threading=True)
             app.init_logging(log_file_name=mp + log_file)
-            sub = None
+            sub: Any = None
             sub_thread = threading.Thread(target=sub_app_po)
             sub_thread.start()
             while not sub_printed:      # NOT ENOUGH fails on gitlab CI: not sub or not sub.active_log_stream:
-                pass  # wait until sub-thread has called init_logging()
+                pass                    # wait until sub-thread has called init_logging()
             po(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")
-            sub.init_logging()  # close sub-app log file
+            sub.init_logging()          # close sub-app log file created by sub_thread
             sub_thread.join()
-            app.init_logging()  # close main-app log file
+            app.init_logging()          # close main-app log file
             assert os.path.exists(sp + log_file)
             assert os.path.exists(mp + log_file)
         finally:
@@ -1149,7 +495,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         app = AppBase(title, app_version=ver)
         assert app.app_title == title
         assert app.app_version == ver
-        assert app._app_path == os.path.dirname(sys.argv[0])
+        assert app.app_path == os.path.dirname(sys.argv[0])
 
     def test_app_find_version(self, restore_app_env):
         app = AppBase()

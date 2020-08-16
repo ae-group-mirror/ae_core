@@ -1,6 +1,6 @@
 """
-ae package core constants, helper functions and base classes
-============================================================
+application core constants, helper functions and base classes
+=============================================================
 
 This module declares practical constants, base classes as well as tiny helper functions
 making the code of your application (and other modules of this package) much cleaner.
@@ -11,7 +11,7 @@ core constants
 For to set the debug level of your application run-time you can use one of
 the constants :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`
 or :data:`DEBUG_LEVEL_VERBOSE`. The debug level of your application can be either
-hard-coded in your code or optionally also externally (using the :ref:`config-files`
+set in your code or optionally data-driven externally (using the :ref:`config-files`
 or :ref:`config-options` of the module :mod:`.console`).
 
 Short names for all debug level constants are provided by the dict :data:`DEBUG_LEVELS`.
@@ -19,9 +19,6 @@ Short names for all debug level constants are provided by the dict :data:`DEBUG_
 For to use the :mod:`python logging module <logging>` in conjunction with this module
 the constant :data:`LOGGING_LEVELS` is providing a mapping between the debug levels
 and the python logging levels.
-
-Standard ISO format strings for date and datetime values are provided by the constants
-:data:`DATE_ISO` and :data:`DATE_TIME_ISO`.
 
 The encoding of strings into byte-strings (for to output them to the console/stdout or
 to file contents) can be tricky sometimes. For to not lose any logging output because
@@ -34,39 +31,6 @@ handling method specified by :data:`DEF_ENCODE_ERRORS`.
 core helper functions
 ---------------------
 
-Although most of the helper functions provided by this module are tiny with only few lines
-of code, they are a great help in making your application code more clear and readable.
-
-For the dynamic execution of functions and code blocks the helper functions :func:`try_call`,
-:func:`try_exec` and :func:`exec_with_return` are provided. Additionally :func:`try_eval` is making
-the evaluation of dynamic Python expressions much easier. These functions are e.g. used
-by the :class:`~.literal.Literal` class for the implementation of dynamically
-determined literal values.
-
-The function :func:`module_callable` allows you to dynamically determine a pointer to any
-callable object (function, class, ...) in a Python module.
-
-The functions :func:`module_name`, :func:`stack_frames` and :func:`stack_variable` are very
-helpful for to inspect the call stack. With them you can easily access the stack frames
-and read e.g. variable values of the callers of your functions/methods. The class
-:class:`AppBase` is using them e.g. for to determine the
-:attr:`version <AppBase.app_version>` and :attr:`title <AppBase.app_title>` of your application.
-
-Other helper functions for the inspection and debugging of your application are
-:func:`full_stack_trace`, :func:`sys_env_dict` and :func:`sys_env_text`.
-
-The helper function :func:`sys_platform` is needed because the Python's :func:`os.name`
-and :func:`sys.platform` do not detect iOS and Android.
-
-The :func:`parse_date` helper function is converting date and datetime string literals into the
-built-in types :class:`datetime.datetime` and :class:`datetime.date`.
-
-Two of the bigger helper functions are :func:`correct_email` and :func:`correct_phone`,
-which are useful for to check if a string contains a valid email address or phone number. They
-also allow you to automatically correct an email address or a phone number to a valid format.
-More sophisticated helpers for the validation of email addresses, phone numbers and
-post addresses are available in the :mod:`.validation` module.
-
 For to encode unicode strings to other codecs the functions :func:`force_encoding` and
 :func:`to_ascii` can be used. The :func:`print_out` function, which is fully compatible to pythons
 :func:`print`, is using these encode helpers for to auto-correct invalid characters.
@@ -74,11 +38,8 @@ For to encode unicode strings to other codecs the functions :func:`force_encodin
 :func:`hide_dup_line_prefix` is very practical if you want to remove or hide redundant
 line prefixes in your log files, to make them better readable.
 
-The :func:`round_traditional` function get provided by this module for traditional rounding of float values.
-The function signature is fully compatible to Python's :func:`round` function.
-
-For to determine the value of an OS environment variable with automatic variable name conversion
-you can use the function :func:`env_str`.
+The :func:`round_traditional` function get provided by this module for traditional rounding of
+float values. The function signature is fully compatible to Python's :func:`round` function.
 
 
 application base classes
@@ -126,7 +87,7 @@ Other automatically initialized instance attributes of :class:`AppBase` are docu
 in the :class:`class docstring <AppBase>`. They include e.g.
 the :attr:`date and time when the instance got created <AppBase.startup_beg>`,
 the :attr:`name/id of this application instance <AppBase.app_name>` or
-the :attr:`startup folder path <AppBase._app_path>`.
+the :attr:`startup folder or application path <AppBase.app_path>`.
 
 
 application class hierarchy
@@ -135,12 +96,12 @@ application class hierarchy
 For most use cases you will not instantiate from :class:`AppBase` directly - instead you will
 instantiate one of the extended application classes that are inherited from this base class.
 
-The class :class:`~.console.ConsoleApp` e.g. inherits from :class:`AppBase` and is adding
+The class :class:`~ae.console.ConsoleApp` e.g. inherits from :class:`AppBase` and is adding
 configuration options and variables to it. So in your console application it is recommended to directly
-use instances of :class:`~.console.ConsoleApp` instead of :class:`AppBase`.
+use instances of :class:`~ae.console.ConsoleApp` instead of :class:`AppBase`.
 
-For applications with an GUI use instead one of the classes :class:`~.kivy_app.KivyApp`,
-:class:`~.enaml_app.EnamlApp` or :class:`~.dabo_app.DaboApp`.
+For applications with an GUI use instead one of the classes :class:`~ae.kivy_app.KivyApp`,
+:class:`~ae.enaml_app.EnamlApp` or :class:`~ae.dabo_app.DaboApp`.
 
 
 application logging
@@ -210,12 +171,12 @@ to your needs you can specify the maximum log file size in MBytes with the argum
 
     app.init_logging(log_file_name='my_log_file.log', log_file_size_max=9.)
 
-By using the :class:`~.console.ConsoleApp` class instead of :class:`AppBase` you can
+By using the :class:`~ae.console.ConsoleApp` class instead of :class:`AppBase` you can
 alternatively store the logging configuration of your application within a
 :ref:`configuration variable <config-variables>` or a
 :ref:`configuration option <config-options>`.
 The order of precedence for to find the appropriate logging configuration of each
-app instance is documented :meth:`here <.console.ConsoleApp._init_logging>` .
+app instance is documented :meth:`here <ae.console.ConsoleApp._init_logging>` .
 
 
 using python logging module
@@ -255,12 +216,8 @@ and :ref:`commend line option <config-options>`. This way you can
 specify :ref:`the actual debug level <pre-defined-config-options>` without the need
 to change (and re-build) your application code.
 """
-import ast
 import datetime
 import faulthandler
-import importlib.abc
-import importlib.util
-import inspect
 import logging
 import logging.config
 import os
@@ -270,16 +227,14 @@ import unicodedata
 import weakref
 
 from io import StringIO
-from string import ascii_letters, digits
-from typing import Any, AnyStr, Callable, Dict, Generator, List, Optional, TextIO, Tuple, Type, Union, cast
-from types import ModuleType
+from typing import Any, AnyStr, Dict, List, Optional, TextIO, Tuple, Union, cast
+
+from ae.system import DATE_TIME_ISO                                         # type: ignore
+from ae.paths import app_name_guess, PATH_PLACEHOLDERS                      # type: ignore
 
 
-__version__ = '0.0.40'                          #: actual version of this portion/package/module
+__version__ = '0.0.41'                          #: actual version of this portion/package/module
 
-
-DATE_TIME_ISO: str = '%Y-%m-%d %H:%M:%S.%f'     #: ISO string format for datetime values in config files/variables
-DATE_ISO: str = '%Y-%m-%d'                      #: ISO string format for date values in config files/variables
 
 DEF_ENCODE_ERRORS: str = 'backslashreplace'     #: default encode error handling for UnicodeEncodeErrors
 DEF_ENCODING: str = 'ascii'
@@ -303,208 +258,6 @@ LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.WARNING, DEBUG_L
 
 HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidden in print/repr output (not if verbose)
 
-SKIPPED_MODULES = ('ae.core', 'ae.console', 'ae.gui_app',
-                   'ae.kivy_app', 'ae.enaml_app', 'ae.lisz_app_data',
-                   'ae.beeware_app', 'ae.pyglet_app', 'ae.pygobject_app', 'ae.dabo_app',
-                   'ae.qpython_app', 'ae.appjar_app')
-""" skipped modules used as default by :func:`module_name` and :func:`stack_variable` """
-
-
-def correct_email(email: str, changed: bool = False, removed: Optional[List[str]] = None) -> Tuple[str, bool]:
-    """ check and correct email address from a user input (removing all comments)
-
-    Special conversions that are not returned as changed/corrected are: the domain part of an email will be corrected
-    to lowercase characters, additionally emails with all letters in uppercase will be converted into lowercase.
-
-    Regular expressions are not working for all edge cases (see the answer to this SO question:
-    https://stackoverflow.com/questions/201323/using-a-regular-expression-to-validate-an-email-address) because RFC822
-    is very complex (even the reg expression recommended by RFC 5322 is not complete; there is also a
-    more readable form given in the informational RFC 3696). Additionally a regular expression
-    does not allow corrections. Therefore this function is using a procedural approach (using recommendations from
-    RFC 822 and https://en.wikipedia.org/wiki/Email_address).
-
-    :param email:       email address
-    :param changed:     (optional) flag if email address got changed (before calling this function) - will be returned
-                        unchanged if email did not get corrected.
-    :param removed:     (optional) list declared by caller for to pass back all the removed characters including
-                        the index in the format "<index>:<removed_character(s)>".
-    :return:            tuple of (possibly corrected email address, flag if email got changed/corrected)
-    """
-    if not email:       # email could be None, also shortcut if email == ""
-        return "", False
-
-    if removed is None:
-        removed = list()
-
-    letters_or_digits = ascii_letters + digits
-    in_local_part = True
-    in_quoted_part = False
-    in_comment = False
-    all_upper_case = True
-    local_part = ""
-    domain_part = ""
-    domain_beg_idx = -1
-    domain_end_idx = len(email) - 1
-    comment = ''
-    last_ch = ''
-    ch_before_comment = ''
-    for idx, char in enumerate(email):
-        if char.islower():
-            all_upper_case = False
-        next_ch = email[idx + 1] if idx + 1 < domain_end_idx else ''
-        if in_comment:
-            comment += char
-            if char == ')':
-                in_comment = False
-                removed.append(comment)
-                last_ch = ch_before_comment
-            continue
-        if char == '(' and not in_quoted_part \
-                and (idx == 0 or email[idx:].find(')@') >= 0 if in_local_part
-                     else idx == domain_beg_idx or email[idx:].find(')') == domain_end_idx - idx):
-            comment = str(idx) + ':('
-            ch_before_comment = last_ch
-            in_comment = True
-            changed = True
-            continue
-        if char == '"' \
-                and (not in_local_part
-                     or last_ch != '.' and idx and not in_quoted_part
-                     or next_ch not in ('.', '@') and last_ch != '\\' and in_quoted_part):
-            removed.append(str(idx) + ':' + char)
-            changed = True
-            continue
-
-        if char == '@' and in_local_part and not in_quoted_part:
-            in_local_part = False
-            domain_beg_idx = idx + 1
-        elif char in letters_or_digits:  # ch.isalnum():
-            pass  # uppercase and lowercase Latin letters A to Z and a to z (isalnum() includes also umlauts)
-        elif ord(char) > 127 and in_local_part:
-            pass    # international characters above U+007F
-        elif char == '.' and in_local_part and not in_quoted_part and last_ch != '.' and idx and next_ch != '@':
-            pass    # if not the first or last unless quoted, and does not appear consecutively unless quoted
-        elif char in ('-', '.') and not in_local_part and (last_ch != '.' or char == '-') \
-                and idx not in (domain_beg_idx, domain_end_idx):
-            pass    # if not duplicated dot and not the first or last character in domain part
-        elif (char in ' (),:;<>@[]' or char in '\\"' and last_ch == '\\' or char == '\\' and next_ch == '\\') \
-                and in_quoted_part:
-            pass    # in quoted part and in addition, a backslash or double-quote must be preceded by a backslash
-        elif char == '"' and in_local_part:
-            in_quoted_part = not in_quoted_part
-        elif (char in "!#$%&'*+-/=?^_`{|}~"
-              or char == '.' and (last_ch and last_ch != '.' and next_ch != '@' or in_quoted_part)) \
-                and in_local_part:
-            pass    # special characters (in local part only and not at beg/end and no dup dot outside of quoted part)
-        else:
-            removed.append(str(idx) + ':' + char)
-            changed = True
-            continue
-
-        if in_local_part:
-            local_part += char
-        else:
-            domain_part += char.lower()
-        last_ch = char
-
-    if all_upper_case:
-        local_part = local_part.lower()
-
-    return local_part + domain_part, changed
-
-
-def correct_phone(phone: str, changed: bool = False, removed: Optional[List[str]] = None, keep_1st_hyphen: bool = False
-                  ) -> Tuple[str, bool]:
-    """ check and correct phone number from a user input (removing all invalid characters including spaces)
-
-    :param phone:           phone number
-    :param changed:         (optional) flag if phone got changed (before calling this function) - will be returned
-                            unchanged if phone did not get corrected.
-    :param removed:         (optional) list declared by caller for to pass back all the removed characters including
-                            the index in the format "<index>:<removed_character(s)>".
-    :param keep_1st_hyphen: (optional, def=False) pass True for to keep at least the first occurring hyphen character.
-    :return:                tuple of (possibly corrected phone number, flag if phone got changed/corrected).
-    """
-    if removed is None:
-        removed = list()
-
-    corr_phone = ''
-    got_hyphen = False
-    for idx, char in enumerate(phone or ""):      # allow phone Is None
-        if char.isdigit():
-            corr_phone += char
-        elif keep_1st_hyphen and char == '-' and not got_hyphen:
-            got_hyphen = True
-            corr_phone += char
-        else:
-            if char == '+' and not corr_phone and not phone[idx + 1:].startswith('00'):
-                corr_phone = '00'
-            removed.append(str(idx) + ':' + char)
-            changed = True
-
-    return corr_phone, changed
-
-
-def env_str(name: str, convert_name: bool = False) -> Optional[str]:
-    """ determine the string value of an OS environment variable, optionally preventing invalid variable name.
-
-    :param name:            name of a OS environment variable.
-    :param convert_name:    pass True for to prevent invalid variable names by converting
-                            CamelCase names into SNAKE_CASE, lower-case into
-                            upper-case and all non-alpha-numeric characters into underscore characters.
-    :return:                string value of OS environment variable if found else None.
-    """
-    if convert_name:
-        str_parts = list()
-        for char in name:
-            if char.isupper():
-                str_parts.append('_' + char)
-            elif char.isalnum():
-                str_parts.append(char.upper())
-            else:
-                str_parts.append('_')
-        name = ''.join(str_parts)
-
-    return os.environ.get(name)
-
-
-def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
-                     glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Optional[Any]:
-    """ execute python code block and return the resulting value of its last code line.
-
-    Inspired by this SO answer
-    https://stackoverflow.com/questions/33409207/how-to-return-value-from-exec-in-function/52361938#52361938.
-
-    :param code_block:          python code block to execute.
-    :param ignored_exceptions:  tuple of ignored exceptions.
-    :param glo_vars:            optional globals() available in the code execution.
-    :param loc_vars:            optional locals() available in the code execution.
-    :return:                    value of the expression at the last code line
-                                or None if either code block is empty, only contains comment lines, or one of
-                                the ignorable exceptions raised or if last code line is no expression.
-    """
-    if glo_vars is None:
-        glo_vars = globals()
-    if loc_vars is None:
-        loc_vars = locals()
-
-    try:
-        code_ast = ast.parse(code_block)    # raises SyntaxError if code block is invalid
-        nodes = code_ast.body
-        if nodes:
-            if isinstance(nodes[-1], ast.Expr):
-                last_node = nodes.pop()
-                if len(nodes) > 0:
-                    # noinspection BuiltinExec
-                    exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
-                # mypy needs getattr() instead of last_node.value
-                return eval(compile(ast.Expression(getattr(last_node, 'value')), "<ast>", 'eval'), glo_vars, loc_vars)
-            # noinspection BuiltinExec
-            exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
-    except ignored_exceptions:
-        pass                            # RETURN None if one of the ignorable exceptions raised in compiling
-    return None                         # mypy needs explicit return statement and value
-
 
 def force_encoding(text: AnyStr, encoding: str = DEF_ENCODING, errors: str = DEF_ENCODE_ERRORS) -> str:
     """ force/ensure the encoding of text (str or bytes) without any UnicodeDecodeError/UnicodeEncodeError.
@@ -517,31 +270,6 @@ def force_encoding(text: AnyStr, encoding: str = DEF_ENCODING, errors: str = DEF
     """
     enc_str: bytes = cast(str, text).encode(encoding=encoding, errors=errors) if isinstance(text, str) else text
     return enc_str.decode(encoding=encoding)
-
-
-def full_stack_trace(ex: Exception) -> str:
-    """ get full stack trace from an exception.
-
-    :param ex:  exception instance.
-    :return:    str with stack trace info.
-    """
-    ret = f"Exception {ex!r}. Traceback:\n"
-    trace_back = sys.exc_info()[2]
-    if trace_back:
-        def ext_ret(item):
-            """ process traceback frame and add as str to ret """
-            nonlocal ret
-            ret += f'File "{item[1]}", line {item[2]}, in {item[3]}\n'
-            lines = item[4]  # mypy does not detect item[]
-            if lines:
-                for line in lines:
-                    ret += ' ' * 4 + line.lstrip()
-
-        for frame in reversed(inspect.getouterframes(trace_back.tb_frame)[1:]):
-            ext_ret(frame)
-        for frame in inspect.getinnerframes(trace_back):
-            ext_ret(frame)
-    return ret
 
 
 def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
@@ -558,121 +286,6 @@ def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
     return " " * idx + current_line[idx:]
 
 
-def module_callable(entry_point: str, module_path: str = "") -> Tuple[Optional[ModuleType], Optional[Callable]]:
-    """ determine dynamically the pointers to a module and to a callable declared within the module.
-
-    :param entry_point:         entry point of a callable in the form <module_name>:<callable_name>.
-                                If the module folder is not available in sys.path then you also have to
-                                pass the module folder path into the :paramref:`module_path` argument.
-    :param module_path:         optional path where the module is situated (only needed if path is not is sys.path).
-    :return:                    tuple of module object and callable object ore None if module/callable doesn't exist.
-    """
-    module = func = None
-    mod_name, func_name = entry_point.split(':')
-    module_path = os.path.join(module_path, mod_name + '.py')
-
-    if os.path.exists(module_path):
-        spec = importlib.util.spec_from_file_location(mod_name, module_path)
-        module = importlib.util.module_from_spec(spec)
-
-        # mypy: had to add import (from importlib.abc import Loader) and assert and then also noinspection for PyCharm
-        assert isinstance(spec.loader, importlib.abc.Loader)
-        # noinspection PyUnresolvedReferences
-        spec.loader.exec_module(module)
-
-    elif mod_name in sys.modules:
-        module = sys.modules[mod_name]
-
-    if module:
-        func = getattr(module, func_name, None)
-
-    return module, func
-
-
-def module_name(*skip_modules: str, depth: int = 1) -> Optional[str]:
-    """ find the first module in the call stack that is *not* in :paramref:`module_name.skip_modules`.
-
-    :param skip_modules:    module names to skip (def=this ae.core module).
-    :param depth:           the calling level from which on to search (def=1 which refers the next deeper frame).
-                            Pass 2 or a even higher value if you want to get the module name from a deeper level
-                            in the call stack.
-    :return:                The module name of the call stack level specified in the :paramref:`~module_name.depth`
-                            argument.
-    """
-    if not skip_modules:
-        skip_modules = SKIPPED_MODULES
-    return stack_var('__name__', *skip_modules, depth=depth)
-
-
-def parse_date(literal: str, *additional_formats: str, replace: Optional[Dict[str, Any]] = None,
-               ret_date: Optional[bool] = False,
-               dt_seps: Tuple[str, ...] = ('T', ' '), ti_sep: str = ':', ms_sep: str = '.', tz_sep: str = '+',
-               ) -> Optional[Union[datetime.date, datetime.datetime]]:
-    """ parse a date literal string, returning the represented date/datetime or None if date literal is invalid.
-
-    :param literal:             date literal string in the format of :data:`DATE_ISO`, :data:`DATE_TIME_ISO` or in
-                                one of the additional formats passed into the
-                                :paramref:`~parse_date.additional_formats` arguments tuple.
-    :param additional_formats:  additional date literal format string masks (supported mask characters are documented
-                                at the `format` argument of the python method :meth:`~datetime.datetime.strptime`).
-    :param replace:             dict of replace keyword arguments for :meth:`datetime.datetime.replace` call.
-                                Pass e.g. dict(microsecond=0, tzinfo=None) for to set the microseconds of the
-                                resulting date to zero and for to remove the timezone info.
-    :param ret_date:            request return value type: True=datetime.date, False=datetime.datetime (def)
-                                or None=determine type from literal (short date if dt_seps are not in literal).
-    :param dt_seps:             tuple of supported separator characters between the date and time literal parts.
-    :param ti_sep:              separator character of the time parts (hours/minutes/seconds) in literal.
-    :param ms_sep:              microseconds separator character.
-    :param tz_sep:              time-zone separator character.
-    :return:                    represented date/datetime or None if date literal is invalid.
-
-    This function can not only fully replace the python method :meth:`~datetime.datetime.strptime`. On top
-    it supports multiple date formats which are much more flexible used/interpreted.
-    """
-    lp_tz_sep = literal.rfind(tz_sep)
-    lp_ms_sep = literal.rfind(ms_sep)
-    lp_dt_sep = max((literal.find(_) for _ in dt_seps))
-    if ret_date and lp_dt_sep != -1:
-        literal = literal[:lp_dt_sep]       # cut time part if exists caller requested return of short date
-        l_dt_sep = None
-        l_time_sep_cnt = 0
-    else:
-        l_dt_sep = literal[lp_dt_sep] if lp_dt_sep != -1 else None
-        l_time_sep_cnt = literal.count(ti_sep)
-        if not 0 <= l_time_sep_cnt <= 2:
-            return None
-
-    if l_dt_sep:
-        additional_formats += (DATE_TIME_ISO,)
-    additional_formats += (DATE_ISO,)
-
-    for mask in additional_formats:
-        mp_dt_sep = max((mask.find(_) for _ in dt_seps))
-        m_time_sep_cnt = mask.count(ti_sep)
-        if lp_tz_sep == -1 and mask[-3] == tz_sep:
-            mask = mask[:-3]                    # no timezone specified in literal, then remove '+%z' from mask
-        if lp_ms_sep == -1 and mask.rfind(ms_sep) != -1:
-            mask = mask[:mask.rfind(ms_sep)]    # no microseconds specified in literal, then remove '.%f' from mask
-        if 1 <= l_time_sep_cnt < m_time_sep_cnt:
-            mask = mask[:mask.rfind(ti_sep)]    # no seconds specified in literal, then remove ':%S' from mask
-        if mp_dt_sep != -1:
-            if l_dt_sep:
-                m_dt_sep = mask[mp_dt_sep]
-                if l_dt_sep != m_dt_sep:        # if literal uses different date-time-sep
-                    mask = mask.replace(m_dt_sep, l_dt_sep)     # .. then replace in mask
-            else:
-                mask = mask[:mp_dt_sep]         # if no date-time-sep in literal, then remove time part from mask
-
-        ret_val = try_call(datetime.datetime.strptime, literal, mask, ignored_exceptions=(ValueError, ))
-        if ret_val is not None:
-            if replace:
-                ret_val = ret_val.replace(**replace)
-            if ret_date or ret_date is None and l_dt_sep is None:
-                ret_val = ret_val.date()
-            return ret_val
-    return None
-
-
 def round_traditional(num_value: float, num_digits: int = 0) -> float:
     """ round numeric value traditional.
 
@@ -687,147 +300,6 @@ def round_traditional(num_value: float, num_digits: int = 0) -> float:
     return round(num_value + 10 ** (-len(str(num_value)) - 1), num_digits)
 
 
-def stack_frames(depth: int = 2) -> Generator:  # Generator[frame, None, None]
-    """ generator returning the call stack frame from the level given in :paramref:`~stack_frames.depth`.
-
-    :param depth:           the calling level from which on to start (def=2 which refers the next deeper stack frame
-                            of the caller of this function).
-                            Pass 3 or a higher value if you want to start with an even deeper frame in the call stack.
-    :return:                The stack frame of a deeper level within the call stack.
-    """
-    try:
-        while True:
-            # noinspection PyProtectedMember,PyUnresolvedReferences
-            yield sys._getframe(depth)          # pylint: disable=protected-access
-            depth += 1
-    except (TypeError, AttributeError, ValueError):
-        pass
-
-
-def stack_variable(name: str, *skip_modules: str, depth: int = 1, locals_only: bool = False) -> Optional[Any]:
-    """ determine variable value in calling stack/frames.
-
-    :param name:            variable name.
-    :param skip_modules:    module names to skip (def=see :data:`SKIPPED_MODULES` module constant).
-    :param depth:           the calling level from which on to search (def=1 which refers the next deeper stack frame).
-                            Pass 2 or a even higher value if you want to get the variable value from a deeper level
-                            in the call stack.
-    :param locals_only:     pass True to only check for local variables (ignoring globals).
-    :return:                The variable value of a deeper level within the call stack.
-
-    This function has an alias named :func:`.stack_var`.
-    """
-    global_vars, local_vars, deep = stack_vars(*skip_modules, find_name=name, min_depth=depth + 1)  # +1 -> stack_vars()
-    if locals_only:
-        if name in global_vars:
-            while global_vars and name not in local_vars:
-                global_vars, local_vars, deep = stack_vars(*skip_modules, find_name=name, min_depth=deep + 1)
-        variables = local_vars
-    else:
-        variables = global_vars
-    return variables.get(name)
-
-
-stack_var = stack_variable          #: alias of function :func:`.stack_variable`
-
-
-def stack_variables(*skip_modules: str, find_name: str = '', max_depth: int = 0, min_depth: int = 3
-                    ) -> Tuple[Dict[str, Any], Dict[str, Any], int]:
-    """ determine global and local variables in calling stack/frames.
-
-    :param skip_modules:    module names to skip (def=see :data:`SKIPPED_MODULES` module constant).
-    :param find_name:       if passed then the returned stack frame must contain a variable with the passed name.
-    :param max_depth:       the maximum depth in the call stack from which to return the variables. if this argument
-                            and :paramref:`~stack_variable.find_name` get not passed then
-                            the variables of the top stack frame will be returned.
-    :param min_depth:       the calling level from which on to search (def=3 which refers the next deeper stack frame
-                            of the caller of this function).
-                            Pass 4 or a higher value if you want to get the variable value from a deeper level
-                            in the call stack.
-    :return:                tuple of the global and local variable dicts and the depth in the call stack.
-
-    This function has an alias named :func:`.stack_vars`.
-    """
-    if not skip_modules:
-        skip_modules = SKIPPED_MODULES
-    glo = loc = dict()
-    depth = min_depth
-    for frame in stack_frames(depth=min_depth):
-        depth += 1
-        glo, loc = frame.f_globals, frame.f_locals
-
-        if glo.get('__name__') in skip_modules:
-            continue
-        if find_name and (find_name in glo or find_name in loc):
-            break
-        if max_depth and depth > max_depth:
-            break
-    return glo, loc, depth - 1
-
-
-stack_vars = stack_variables        #: alias of function :func:`.stack_variables`
-
-
-def sys_env_dict(file: str = __file__) -> Dict[str, Any]:
-    """ returns dict with python system run-time environment values.
-
-    :param file:    optional file name (def=__file__/ae.core.py).
-    :return:        python system run-time environment values like python_ver, argv, cwd, executable, __file__, frozen
-                    and bundle_dir.
-    """
-    sed: Dict[str, Any] = dict()
-    sed['python_ver'] = sys.version
-    sed['argv'] = sys.argv
-    sed['executable'] = sys.executable
-    sed['cwd'] = os.getcwd()
-    sed['__file__'] = file
-    sed['frozen'] = getattr(sys, 'frozen', False)
-    if getattr(sys, 'frozen', False):
-        sed['bundle_dir'] = getattr(sys, '_MEIPASS', '*#ERR#*')
-    return sed
-
-
-def sys_env_text(file: str = __file__, ind_ch: str = " ", ind_len: int = 18, key_ch: str = "=", key_len: int = 12,
-                 extra_sys_env_dict: Optional[Dict[str, str]] = None) -> str:
-    """ compile formatted text block with system environment info.
-
-    :param file:                main module file name (def=__file__).
-    :param ind_ch:              indent character (def=" ").
-    :param ind_len:             indent depths (def=18 characters).
-    :param key_ch:              key-value separator character (def=" =").
-    :param key_len:             key-name maximum length (def=12 characters).
-    :param extra_sys_env_dict:  dict with additional system info items.
-    :return:                    text block with system environment info.
-    """
-    sed = sys_env_dict(file=file)
-    if extra_sys_env_dict:
-        sed.update(extra_sys_env_dict)
-    ind = ""
-    text = "\n".join([f"{ind:{ind_ch}>{ind_len}}{key:{key_ch}<{key_len}}{val}" for key, val in sed.items()])
-    return text
-
-
-def sys_platform() -> str:
-    """ determine the operating system where this code is running.
-
-    :return:    operating system (extension) as string:
-
-                * `'android'` for all Android systems.
-                * `'cygwin'` for MS Windows with an installed Cygwin extension.
-                * `'darwin'` for all Apple Mac OS X systems.
-                * `'freebsd'` for all other BSD-based unix systems.
-                * `'ios'` for all Apple iOS systems.
-                * `'linux'` for all other unix systems (like Arch, Debian/Ubuntu, Suse, ...).
-                * `'win32'` for MS Windows systems (w/o the Cygwin extension).
-
-    """
-    if env_str('ANDROID_ARGUMENT') is not None:  # p4a env variable; alternatively use ANDROID_PRIVATE
-        platform = 'android'
-    else:
-        platform = env_str('KIVY_BUILD') or sys.platform    # KIVY_BUILD == 'android'/'ios' on Android/iOS
-    return platform
-
-
 def to_ascii(unicode_str: str) -> str:
     """ converts unicode string into ascii representation.
 
@@ -839,71 +311,6 @@ def to_ascii(unicode_str: str) -> str:
     """
     nfkd_form = unicodedata.normalize('NFKD', unicode_str)
     return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
-
-
-def try_call(callee: Callable, *args, ignored_exceptions: Tuple[Type[Exception], ...] = (), **kwargs) -> Any:
-    """ execute callable while ignoring specified exceptions and return callable return value.
-
-    :param callee:              pointer to callable (either function pointer, lambda expression, a class, ...).
-    :param args:                function arguments tuple.
-    :param ignored_exceptions:  tuple of ignored exceptions.
-    :param kwargs:              function keyword arguments dict.
-    :return:                    function return value or None if a ignored exception got thrown.
-    """
-    ret = None
-    try:  # catch type conversion errors, e.g. for datetime.date(None) while bool(None) works (->False)
-        ret = callee(*args, **kwargs)
-    except ignored_exceptions:
-        pass
-    return ret
-
-
-def try_eval(expr: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
-             glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Any:
-    """ evaluate expression string ignoring specified exceptions and return evaluated value.
-
-    :param expr:                expression to evaluate.
-    :param ignored_exceptions:  tuple of ignored exceptions.
-    :param glo_vars:            optional globals() available in the expression evaluation.
-    :param loc_vars:            optional locals() available in the expression evaluation.
-    :return:                    function return value or None if a ignored exception got thrown.
-    """
-    ret = None
-
-    if glo_vars is None:
-        glo_vars = globals()
-    if loc_vars is None:
-        loc_vars = locals()
-
-    try:  # catch type conversion errors, e.g. for datetime.date(None) while bool(None) works (->False)
-        ret = eval(expr, glo_vars, loc_vars)
-    except ignored_exceptions:
-        pass
-    return ret
-
-
-def try_exec(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
-             glo_vars: Optional[dict] = None, loc_vars: Optional[dict] = None) -> Any:
-    """ execute python code block string ignoring specified exceptions and return value of last code line in block.
-
-    :param code_block:          python code block to be executed.
-    :param ignored_exceptions:  tuple of ignored exceptions.
-    :param glo_vars:            optional globals() available in the code execution.
-    :param loc_vars:            optional locals() available in the code execution.
-    :return:                    function return value or None if a ignored exception got thrown.
-    """
-    ret = None
-
-    if glo_vars is None:
-        glo_vars = globals()
-    if loc_vars is None:
-        loc_vars = locals()
-
-    try:
-        ret = exec_with_return(code_block, glo_vars=glo_vars, loc_vars=loc_vars)
-    except ignored_exceptions:
-        pass
-    return ret
 
 
 MAX_NUM_LOG_FILES: int = 69                         #: maximum number of :ref:`ae log files <ae-log-file>`
@@ -1209,10 +616,9 @@ class AppBase:
 
     Instance Attributes (ordered alphabetically - ignoring underscore characters):
 
-    * :attr:`_app_args`             value of sys.args at instantiation of this class.
     * :attr:`app_key`               id/key of this application instance.
     * :attr:`app_name`              basename (without the file name extension) of the executable.
-    * :attr:`_app_path`             file path of executable.
+    * :attr:`app_path`              file path of executable.
     * :attr:`app_title`             application title/description.
     * :attr:`app_version`           application version (set via the :paramref:`AppBase.app_version` argument).
     * :attr:`debug_level`           debug level of this instance.
@@ -1265,20 +671,25 @@ class AppBase:
         :param multi_threading:         pass True if instance is used in multi-threading app.
 
         :param suppress_stdout:         pass True (for wsgi apps) for to prevent any python print outputs to stdout.
-       """
-        self.startup_beg: datetime.datetime = \
-            datetime.datetime.now()                             #: begin of app startup datetime
+        """
+        try:
+            from ae.inspector import stack_var      # type: ignore
+        except ImportError:                         # pragma: no cover
+            def stack_var(key: str) -> str:
+                """ get default value for app title and version (if ae.inspector is not provided/available). """
+                return f"AppBase.__init__(): stack_var() not imported for to determine {key} value"
 
-        self._app_args = sys.argv                               #: initial sys.args value
-        path_name_ext = self._app_args[0]
-        app_file_name = os.path.basename(path_name_ext)
-        self._app_path: str = os.path.dirname(path_name_ext)    #: path to folder of your main app code file
+        self.startup_beg: datetime.datetime = datetime.datetime.now()   #: begin of app startup datetime
+        self.app_path: str = os.path.dirname(sys.argv[0])               #: path to folder of your main app code file
+        PATH_PLACEHOLDERS['app'] = self.app_path
 
         if not app_title:
             doc_str = stack_var('__doc__')
             app_title = doc_str.split('\n')[0] if doc_str else ""
-        if not app_name:
-            app_name = os.path.splitext(app_file_name)[0]
+        if app_name:
+            PATH_PLACEHOLDERS['app_name'] = app_name
+        else:
+            app_name = app_name_guess()
         if not app_version:
             app_version = stack_var('__version__') or ""
 
@@ -1399,7 +810,7 @@ class AppBase:
           and space padded to minimal 4 characters.
         * :attr:`_log_with_timestamp`: if (a) True or (b) an non-empty string then the system time
           (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified either by the
-          (a) the :data:`DATE_TIME_ISO` constant or (b) by the string in this attribute.
+          (a) the :data:`~ae.system.DATE_TIME_ISO` constant or (b) by the string in this attribute.
 
         This method is using the instance attribute :attr:`_last_log_line_prefix` for to keep a copy of
         the last printed log line prefix for to prevent the printout of duplicate characters in consecutive

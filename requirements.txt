@@ -1,1 +1,4 @@
-# ae.core does not have any dependencies
+# ae.core dependencies
+ae_system
+ae_paths
+ae_inspector    # optional
