@@ -233,7 +233,7 @@ from ae.system import DATE_TIME_ISO                                         # ty
 from ae.paths import app_name_guess, PATH_PLACEHOLDERS                      # type: ignore
 
 
-__version__ = '0.0.41'                          #: actual version of this portion/package/module
+__version__ = '0.0.42'                          #: actual version of this portion/package/module
 
 
 DEF_ENCODE_ERRORS: str = 'backslashreplace'     #: default encode error handling for UnicodeEncodeErrors
@@ -1009,10 +1009,11 @@ class AppBase:
                 sys.stderr = ori_std_err
                 sys.stdout = ori_std_out
 
-        if is_main_app_instance or redirect:
-            faulthandler.enable(file=sys.stdout)
-        elif is_main_app_instance and not redirect and faulthandler.is_enabled():
-            faulthandler.disable()  # pragma: no cover (badly testable - would cancel/break test runs)
+        if is_main_app_instance:
+            if redirect:
+                faulthandler.enable(file=sys.stdout)
+            elif faulthandler.is_enabled():
+                faulthandler.disable()  # pragma: no cover (badly testable - would cancel/break test runs)
 
     def _append_eof_and_flush_file(self, stream_file: TextIO, stream_name: str):
         """ add special end-of-file marker and flush the internal buffers to the file stream.
