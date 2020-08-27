@@ -10,6 +10,11 @@ mypy_report/
 .*.cfg
 .*.ini
 .idea/workspace.xml
+# .. for kivy projects
+.buildozer
+bin
+# .. for enaml projects
+__enamlcache__
 
 
 # Created by https://www.gitignore.io/api/python

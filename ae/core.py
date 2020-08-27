@@ -233,7 +233,7 @@ from ae.system import DATE_TIME_ISO                                         # ty
 from ae.paths import app_name_guess, PATH_PLACEHOLDERS                      # type: ignore
 
 
-__version__ = '0.0.42'                          #: actual version of this portion/package/module
+__version__ = '0.1.42'                          #: actual version of this portion/package/module
 
 
 DEF_ENCODE_ERRORS: str = 'backslashreplace'     #: default encode error handling for UnicodeEncodeErrors
