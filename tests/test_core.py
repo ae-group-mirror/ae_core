@@ -13,13 +13,11 @@ try:
 except ImportError:
     from .conftest import delete_files
 
-from ae.system import DATE_ISO, DATE_TIME_ISO
+from ae.base import DATE_TIME_ISO, force_encoding
 # noinspection PyProtectedMember
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
-    activate_multi_threading, _deactivate_multi_threading, main_app_instance,
-    force_encoding, hide_dup_line_prefix,
-    po, round_traditional, to_ascii,
+    activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, po,
     AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED)
 
 
@@ -27,37 +25,6 @@ __version__ = '3.6.9dev-test'   # used for automatic app version find tests
 
 
 class TestCoreHelpers:
-    def test_force_encoding_bytes(self):
-        s = 'äöü'
-
-        assert s.encode('ascii', errors='replace') == b'???'
-        ba = s.encode('ascii', errors='backslashreplace')   # == b'\\xe4\\xf6\\xfc'
-        assert force_encoding(ba, encoding='ascii') == str(ba, encoding='ascii')
-        assert force_encoding(ba) == str(ba, encoding='ascii')
-
-        bw = s.encode('cp1252')                             # == b'\xe4\xf6\xfc'
-        assert force_encoding(bw, encoding='cp1252') == s
-        with pytest.raises(UnicodeDecodeError):
-            force_encoding(bw)
-
-    def test_force_encoding_umlaut(self):
-        s = 'äöü'
-        assert force_encoding(s) == '\\xe4\\xf6\\xfc'
-
-        assert force_encoding(s, encoding='utf-8') == s
-        assert force_encoding(s, encoding='utf-16') == s
-        assert force_encoding(s, encoding='cp1252') == s
-
-        assert force_encoding(s, encoding='utf-8', errors='strict') == s
-        assert force_encoding(s, encoding='utf-8', errors='replace') == s
-        assert force_encoding(s, encoding='utf-8', errors='backslashreplace') == s
-        assert force_encoding(s, encoding='utf-8', errors='xmlcharrefreplace') == s
-        assert force_encoding(s, encoding='utf-8', errors='ignore') == s
-        assert force_encoding(s, encoding='utf-8', errors='') == s
-
-        with pytest.raises(TypeError):
-            assert force_encoding(s, encoding=cast(str, None)) == '\\xe4\\xf6\\xfc'
-
     def test_hide_dup_line_prefix(self):
         l1 = "<t_s_t>"
         l2 = l1
@@ -104,19 +71,6 @@ class TestCoreHelpers:
         po('\r', 123456)     # coverage of processing output (not captured by pytest)
         out, err = capsys.readouterr()
         assert out == '' and err == ''
-
-    def test_round_traditional(self):
-        assert round_traditional(1.01) == 1
-        assert round_traditional(10.1, -1) == 10
-        assert round_traditional(1.123, 1) == 1.1
-        assert round_traditional(0.5) == 1
-        assert round_traditional(0.5001, 1) == 0.5
-
-        assert round_traditional(0.075, 2) == 0.08
-        assert round(0.075, 2) == 0.07
-
-    def test_to_ascii(self):
-        assert to_ascii('äöü') == 'aou'
 
 
 class TestPrintingReplicator:

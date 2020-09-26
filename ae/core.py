@@ -24,22 +24,20 @@ The encoding of strings into byte-strings (for to output them to the console/std
 to file contents) can be tricky sometimes. For to not lose any logging output because
 of invalid characters this module will automatically handle any :exc:`UnicodeEncodeError`
 exception for you. Invalid characters will in case of this error be converted
-to the default encoding (specified by :data:`DEF_ENCODING`) with the default error
-handling method specified by :data:`DEF_ENCODE_ERRORS`.
+to the default encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error
+handling method specified by :data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the
+:mod:`ae.base` namespace portion/module.
 
 
 core helper functions
 ---------------------
 
-For to encode unicode strings to other codecs the functions :func:`force_encoding` and
-:func:`to_ascii` can be used. The :func:`print_out` function, which is fully compatible to pythons
-:func:`print`, is using these encode helpers for to auto-correct invalid characters.
+The :func:`print_out` function, which is fully compatible to pythons
+:func:`print`, is using the encode helpers :func:`~ae.base.force_encoding` and
+:func:`~.ae.base.to_ascii` for to auto-correct invalid characters.
 
 :func:`hide_dup_line_prefix` is very practical if you want to remove or hide redundant
 line prefixes in your log files, to make them better readable.
-
-The :func:`round_traditional` function get provided by this module for traditional rounding of
-float values. The function signature is fully compatible to Python's :func:`round` function.
 
 
 application base classes
@@ -215,6 +213,9 @@ of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides this propert
 and :ref:`commend line option <config-options>`. This way you can
 specify :ref:`the actual debug level <pre-defined-config-options>` without the need
 to change (and re-build) your application code.
+
+.. _debug-level-constants:
+
 """
 import datetime
 import faulthandler
@@ -223,27 +224,19 @@ import logging.config
 import os
 import sys
 import threading
-import unicodedata
 import weakref
 
 from io import StringIO
 from typing import Any, AnyStr, Dict, List, Optional, TextIO, Tuple, Union, cast
 
-from ae.system import DATE_TIME_ISO                                         # type: ignore
-from ae.paths import app_name_guess, PATH_PLACEHOLDERS                      # type: ignore
+from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii      # type: ignore
+from ae.paths import app_name_guess, PATH_PLACEHOLDERS                              # type: ignore
 
 
-__version__ = '0.1.42'                          #: actual version of this portion/package/module
+__version__ = '0.1.43'                          #: actual version of this portion/package/module
 
 
-DEF_ENCODE_ERRORS: str = 'backslashreplace'     #: default encode error handling for UnicodeEncodeErrors
-DEF_ENCODING: str = 'ascii'
-""" core encoding that will always work independent from destination (console, file system, XMLParser, ...).
-
-.. _debug-level-constants:
-
-"""
-# DON'T RE-ORDER: using DEF_ENCODING doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
+# DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
 DEBUG_LEVEL_DISABLED: int = 0       #: lowest debug level - only display logging levels ERROR/CRITICAL.
 DEBUG_LEVEL_ENABLED: int = 1        #: minimum debugging info - display logging levels WARNING or higher.
 DEBUG_LEVEL_VERBOSE: int = 2        #: verbose debug info - display logging levels INFO/DEBUG or higher.
@@ -259,19 +252,6 @@ LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.WARNING, DEBUG_L
 HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidden in print/repr output (not if verbose)
 
 
-def force_encoding(text: AnyStr, encoding: str = DEF_ENCODING, errors: str = DEF_ENCODE_ERRORS) -> str:
-    """ force/ensure the encoding of text (str or bytes) without any UnicodeDecodeError/UnicodeEncodeError.
-
-    :param text:        text as str/bytes.
-    :param encoding:    encoding (def= :data:`DEF_ENCODING`).
-    :param errors:      encode error handling (def= :data:`DEF_ENCODE_ERRORS`).
-
-    :return:            text as str (with all characters checked/converted/replaced for to be encode-able).
-    """
-    enc_str: bytes = cast(str, text).encode(encoding=encoding, errors=errors) if isinstance(text, str) else text
-    return enc_str.decode(encoding=encoding)
-
-
 def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
     """ replace duplicate characters at the begin of two strings with spaces.
 
@@ -284,33 +264,6 @@ def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
     while idx < min_len and last_line[idx] == current_line[idx]:
         idx += 1
     return " " * idx + current_line[idx:]
-
-
-def round_traditional(num_value: float, num_digits: int = 0) -> float:
-    """ round numeric value traditional.
-
-    Needed because python round() is working differently, e.g. round(0.075, 2) == 0.07 instead of 0.08
-    inspired by https://stackoverflow.com/questions/31818050/python-2-7-round-number-to-nearest-integer.
-
-    :param num_value:   float value to be round.
-    :param num_digits:  number of digits to be round (def=0 - rounds to an integer value).
-
-    :return:        rounded value.
-    """
-    return round(num_value + 10 ** (-len(str(num_value)) - 1), num_digits)
-
-
-def to_ascii(unicode_str: str) -> str:
-    """ converts unicode string into ascii representation.
-
-    Useful for fuzzy string compare; inspired by MiniQuark's answer
-    in: https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-in-a-python-unicode-string
-
-    :param unicode_str:     string to convert.
-    :return:                converted string (replaced accents, diacritics, ... into normal ascii characters).
-    """
-    nfkd_form = unicodedata.normalize('NFKD', unicode_str)
-    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 
 MAX_NUM_LOG_FILES: int = 69                         #: maximum number of :ref:`ae log files <ae-log-file>`
@@ -637,6 +590,24 @@ class AppBase:
     * :attr:`suppress_stdout`       flag set to True if this application does not print to stdout/console.
     * :attr:`sys_env_id`            system environment id of this application instance.
     """
+    app_title: str = ""                             #: title/description of this app instance
+    app_name: str = ''                              #: name of this app instance
+    app_version: str = ''                           #: version of this app instance
+    _debug_level: int = DEBUG_LEVEL_VERBOSE         #: debug level of this app instance
+    sys_env_id: str = ''                            #: system environment id of this app instance
+    suppress_stdout: bool = True                    #: flag to suppress prints to stdout
+    startup_end: Optional[datetime.datetime] = None  #: end datetime of the application startup
+    _last_log_line_prefix: str = ""                 #: prefix of the last printed log line
+    _log_buf_stream: Optional[StringIO] = None      #: log file buffer stream instance
+    _log_file_stream: Optional[TextIO] = None       #: log file stream instance
+    _log_file_index: int = 0                        #: log file index (for rotating logs)
+    _log_file_size_max: float = LOG_FILE_MAX_SIZE   #: maximum log file size in MBytes (rotating log files)
+    _log_file_name: str = ""                        #: log file name
+    _log_with_timestamp: Union[bool, str] = False   #: True of strftime format string to enable timestamp
+    _nul_std_out: Optional[TextIO] = None           #: logging null stream
+    py_log_params: Dict[str, Any] = dict()          #: dict of config parameters for py logging
+    _shut_down: bool = False                        #: True if this app instance got shut down already
+
     def __init__(self, app_title: str = '', app_name: str = '', app_version: str = '', sys_env_id: str = '',
                  debug_level: int = DEBUG_LEVEL_DISABLED, multi_threading: bool = False, suppress_stdout: bool = False):
         """ initialize a new :class:`AppBase` instance.
@@ -702,18 +673,6 @@ class AppBase:
             activate_multi_threading()
         self.suppress_stdout: bool = suppress_stdout            #: flag to suppress prints to stdout
 
-        with log_file_lock:
-            self._last_log_line_prefix: str = ""                #: prefix of the last printed log line
-            self._log_buf_stream: Optional[StringIO] = None     #: log file buffer stream instance
-            self._log_file_stream: Optional[TextIO] = None      #: log file stream instance
-            self._log_file_index: int = 0                       #: log file index (for rotating logs)
-            self._log_file_size_max: float = LOG_FILE_MAX_SIZE  #: maximum log file size in MBytes (rotating log files)
-            self._log_file_name: str = ""                       #: log file name
-            self._log_with_timestamp: Union[bool, str] = False  #: True of strftime format string to enable timestamp
-            self._nul_std_out: Optional[TextIO] = None          #: logging null stream
-            self.py_log_params: Dict[str, Any] = dict()         #: dict of config parameters for py logging
-
-        self._shut_down: bool = False                           #: True if this app instance got shut down already
         self.startup_end: Optional[datetime.datetime] = None    #: end datetime of the application startup
 
         _register_app_thread()
@@ -810,7 +769,7 @@ class AppBase:
           and space padded to minimal 4 characters.
         * :attr:`_log_with_timestamp`: if (a) True or (b) an non-empty string then the system time
           (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified either by the
-          (a) the :data:`~ae.system.DATE_TIME_ISO` constant or (b) by the string in this attribute.
+          (a) the :data:`~ae.base.DATE_TIME_ISO` constant or (b) by the string in this attribute.
 
         This method is using the instance attribute :attr:`_last_log_line_prefix` for to keep a copy of
         the last printed log line prefix for to prevent the printout of duplicate characters in consecutive
