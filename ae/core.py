@@ -229,11 +229,11 @@ import weakref
 from io import StringIO
 from typing import Any, AnyStr, Dict, List, Optional, TextIO, Tuple, Union, cast
 
-from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii      # type: ignore
-from ae.paths import app_name_guess, PATH_PLACEHOLDERS                              # type: ignore
+from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii          # type: ignore
+from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.43'                          #: actual version of this portion/package/module
+__version__ = '0.1.44'                          #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -659,6 +659,8 @@ class AppBase:
             app_title = doc_str.split('\n')[0] if doc_str else ""
         if app_name:
             PATH_PLACEHOLDERS['app_name'] = app_name
+            PATH_PLACEHOLDERS['app'] = app_data_path()
+            PATH_PLACEHOLDERS['ado'] = app_docs_path()
         else:
             app_name = app_name_guess()
         if not app_version:
