@@ -233,7 +233,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.44'                          #: actual version of this portion/package/module
+__version__ = '0.1.45'              #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -656,7 +656,7 @@ class AppBase:
 
         if not app_title:
             doc_str = stack_var('__doc__')
-            app_title = doc_str.split('\n')[0] if doc_str else ""
+            app_title = doc_str.strip().split('\n')[0] if doc_str else ""
         if app_name:
             PATH_PLACEHOLDERS['app_name'] = app_name
             PATH_PLACEHOLDERS['app'] = app_data_path()

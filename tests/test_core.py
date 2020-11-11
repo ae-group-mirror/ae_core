@@ -457,7 +457,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
 
     def test_app_find_title(self, restore_app_env):
         app = AppBase()
-        assert app.app_title == __doc__
+        assert app.app_title == __doc__.strip()
 
     def test_log_line_prefix(self, restore_app_env):
         app = AppBase(sys_env_id='Tee sst')
