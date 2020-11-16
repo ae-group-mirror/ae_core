@@ -224,6 +224,7 @@ import logging.config
 import os
 import sys
 import threading
+import traceback
 import weakref
 
 from io import StringIO
@@ -233,7 +234,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.45'              #: actual version of this portion/package/module
+__version__ = '0.1.46'              #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -725,6 +726,23 @@ class AppBase:
     def verbose(self) -> bool:
         """ True if app is in verbose debug mode. """
         return self._debug_level >= DEBUG_LEVEL_VERBOSE
+
+    def call_method(self, method: str, *args, **kwargs) -> Any:
+        """ call method of this instance with the passed args, catching and logging exceptions preventing app exit.
+
+        :param method:      name of the main app method to call.
+        :param args:        args passed to the main app method to be called.
+        :param kwargs:      kwargs passed to the main app method to be called.
+        :return:            return value of the called method or None if method throws exception or does not exist.
+        """
+        event_callback = getattr(self, method, None)
+        if event_callback is not None:
+            assert callable(event_callback), f"AppBase.call_method: {method!r} is not callable ({args}, {kwargs})"
+            try:
+                return event_callback(*args, **kwargs)
+            except (AttributeError, IndexError, LookupError, ValueError, Exception) as ex:
+                self.po(f" ***  AppBase.call_method({method}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
+        return None
 
     def init_logging(self, py_logging_params: Optional[Dict[str, Any]] = None, log_file_name: str = "",
                      log_file_size_max: float = LOG_FILE_MAX_SIZE, log_with_timestamp: Union[bool, str] = False,

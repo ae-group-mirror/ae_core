@@ -459,6 +459,39 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         app = AppBase()
         assert app.app_title == __doc__.strip()
 
+    def test_call_method_raise_if_not_callable(self, restore_app_env):
+        app = AppBase()
+        app.init_called = False
+        with pytest.raises(AssertionError):
+            app.call_method('init_called')
+
+    def test_call_method_catch_attr_error_exception(self, restore_app_env):
+        app = AppBase()
+
+        def _raising_ex():
+            """ dummy method raising exception """
+            raise AttributeError
+        setattr(app, 'test_raiser', _raising_ex)
+        app.call_method('test_raiser')
+
+    def test_call_method_catch_lookup_error_exception(self, restore_app_env):
+        app = AppBase()
+
+        def _raising_ex():
+            """ dummy method raising exception """
+            raise LookupError
+        setattr(app, 'test_raiser', _raising_ex)
+        app.call_method('test_raiser')
+
+    def test_call_method_catch_value_error_exception(self, restore_app_env):
+        app = AppBase()
+
+        def _raising_ex():
+            """ dummy method raising exception """
+            raise ValueError
+        setattr(app, 'test_raiser', _raising_ex)
+        app.call_method('test_raiser')
+
     def test_log_line_prefix(self, restore_app_env):
         app = AppBase(sys_env_id='Tee sst')
         app._log_with_timestamp = True
