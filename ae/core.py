@@ -234,7 +234,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.46'              #: actual version of this portion/package/module
+__version__ = '0.1.47'              #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -392,6 +392,10 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
                 fixed_objects.append(obj)
             objects = tuple(fixed_objects)
             retries -= 1
+        except (IOError, OSError, ValueError, Exception):   # pragma: no cover
+            traceback.print_exc()
+            print("...... in ae.core.print_out(", objects, ")")
+            break
 
 
 po = print_out              #: alias of function :func:`.print_out`
