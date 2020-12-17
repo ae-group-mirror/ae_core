@@ -234,7 +234,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.47'              #: actual version of this portion/package/module
+__version__ = '0.1.48'              #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -668,6 +668,8 @@ class AppBase:
             PATH_PLACEHOLDERS['ado'] = app_docs_path()
         else:
             app_name = app_name_guess()
+        if 'main_app_name' not in PATH_PLACEHOLDERS:
+            PATH_PLACEHOLDERS['main_app_name'] = app_name
         if not app_version:
             app_version = stack_var('__version__') or ""
 
@@ -935,7 +937,7 @@ class AppBase:
         force = is_main_app_instance and exit_code      # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
-            self.po(f"####  Shutdown............  {exit_code if force else ''} {timeout}", logger=_logger)
+            self.po(f"####  Shutdown {self.app_name}..........  {exit_code if force else ''} {timeout}", logger=_logger)
 
         a_blocked = (False if force else app_inst_lock.acquire(**aqc_kwargs))
         if is_main_app_instance:
