@@ -2,19 +2,17 @@
 application core constants, helper functions and base classes
 =============================================================
 
-This module declares practical constants, base classes as well as tiny helper functions
-making the code of your application (and other modules of this package) much cleaner.
+This module declares practical constants, tiny helper functions and app base classes, which are
+reducing the code of your application (and of other ae namespace modules/portions).
 
 core constants
 --------------
 
-For to set the debug level of your application run-time you can use one of
-the constants :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`
-or :data:`DEBUG_LEVEL_VERBOSE`. The debug level of your application can be either
+There are three debug level constants: :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBUG_LEVEL_ENABLED`
+and :data:`DEBUG_LEVEL_VERBOSE`. Short names for all debug level constants are provided by the
+dict :data:`DEBUG_LEVELS`. The debug level of your application can be either
 set in your code or optionally data-driven externally (using the :ref:`config-files`
 or :ref:`config-options` of the module :mod:`.console`).
-
-Short names for all debug level constants are provided by the dict :data:`DEBUG_LEVELS`.
 
 For to use the :mod:`python logging module <logging>` in conjunction with this module
 the constant :data:`LOGGING_LEVELS` is providing a mapping between the debug levels
@@ -23,7 +21,7 @@ and the python logging levels.
 The encoding of strings into byte-strings (for to output them to the console/stdout or
 to file contents) can be tricky sometimes. For to not lose any logging output because
 of invalid characters this module will automatically handle any :exc:`UnicodeEncodeError`
-exception for you. Invalid characters will in case of this error be converted
+exception for you. Invalid characters will then automatically be converted
 to the default encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error
 handling method specified by :data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the
 :mod:`ae.base` namespace portion/module.
@@ -36,8 +34,8 @@ The :func:`print_out` function, which is fully compatible to pythons
 :func:`print`, is using the encode helpers :func:`~ae.base.force_encoding` and
 :func:`~.ae.base.to_ascii` for to auto-correct invalid characters.
 
-:func:`hide_dup_line_prefix` is very practical if you want to remove or hide redundant
-line prefixes in your log files, to make them better readable.
+The function :func:`hide_dup_line_prefix` is very practical if you want to remove or hide
+redundant line prefixes in your log files, to make them better readable.
 
 
 application base classes
@@ -48,7 +46,7 @@ to your application. Create in your application one instance of :class:`AppBase`
 the main application task. If your application needs a separate logging/debugging configuration for
 sub-threads or sub-tasks then create an :class:`SubApp` instance for each of these sub-apps.
 
-Sub-apps are not tied to any fix use-case. They can be created for example for each sub-task or
+Sub-apps are very flexible and not tied to any fix use-case. They can be created e.g. for each sub-task or
 application thread. You could also create a :class:`SubApp` instance for each of your external systems,
 like a database server or for to connect your application onto different test environments
 or to your live an your production system (e.g. for system comparison and maintenance).
@@ -85,7 +83,7 @@ Other automatically initialized instance attributes of :class:`AppBase` are docu
 in the :class:`class docstring <AppBase>`. They include e.g.
 the :attr:`date and time when the instance got created <AppBase.startup_beg>`,
 the :attr:`name/id of this application instance <AppBase.app_name>` or
-the :attr:`startup folder or application path <AppBase.app_path>`.
+the :attr:`application path <AppBase.app_path>`.
 
 
 application class hierarchy
@@ -234,7 +232,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.48'              #: actual version of this portion/package/module
+__version__ = '0.1.49'              #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -576,7 +574,7 @@ class AppBase:
 
     * :attr:`app_key`               id/key of this application instance.
     * :attr:`app_name`              basename (without the file name extension) of the executable.
-    * :attr:`app_path`              file path of executable.
+    * :attr:`app_path`              file path of app executable.
     * :attr:`app_title`             application title/description.
     * :attr:`app_version`           application version (set via the :paramref:`AppBase.app_version` argument).
     * :attr:`debug_level`           debug level of this instance.
@@ -657,7 +655,6 @@ class AppBase:
 
         self.startup_beg: datetime.datetime = datetime.datetime.now()   #: begin of app startup datetime
         self.app_path: str = os.path.dirname(sys.argv[0])               #: path to folder of your main app code file
-        PATH_PLACEHOLDERS['app'] = self.app_path
 
         if not app_title:
             doc_str = stack_var('__doc__')
@@ -668,7 +665,7 @@ class AppBase:
             PATH_PLACEHOLDERS['ado'] = app_docs_path()
         else:
             app_name = app_name_guess()
-        if 'main_app_name' not in PATH_PLACEHOLDERS:
+        if PATH_PLACEHOLDERS.get('main_app_name', "") in ("", 'pyTstConsAppKey', '_jb_pytest_runner'):
             PATH_PLACEHOLDERS['main_app_name'] = app_name
         if not app_version:
             app_version = stack_var('__version__') or ""

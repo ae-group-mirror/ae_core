@@ -8,10 +8,7 @@ import threading
 from typing import cast, Any
 
 import pytest
-try:
-    from conftest import delete_files
-except ImportError:
-    from .conftest import delete_files
+from conftest import delete_files
 
 from ae.base import DATE_TIME_ISO, force_encoding
 # noinspection PyProtectedMember
