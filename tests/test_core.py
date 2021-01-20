@@ -13,9 +13,10 @@ from conftest import delete_files
 from ae.base import DATE_TIME_ISO, force_encoding
 # noinspection PyProtectedMember
 from ae.core import (
-    APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
+    APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
     activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, po,
-    AppBase, _PrintingReplicator, SubApp, DEBUG_LEVEL_ENABLED)
+    registered_app_names,
+    AppBase, _PrintingReplicator, SubApp)
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
@@ -68,6 +69,15 @@ class TestCoreHelpers:
         po('\r', 123456)     # coverage of processing output (not captured by pytest)
         out, err = capsys.readouterr()
         assert out == '' and err == ''
+
+    def test_registered_app_names_empty(self):
+        assert not registered_app_names()
+
+    def test_registered_app_names_not_empty(self, restore_app_env):
+        assert not registered_app_names()
+        app = AppBase()
+        assert len(registered_app_names()) == 1
+        assert app.app_name == registered_app_names()[0]
 
 
 class TestPrintingReplicator:

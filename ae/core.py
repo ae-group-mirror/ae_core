@@ -232,7 +232,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.49'              #: actual version of this portion/package/module
+__version__ = '0.1.50'              #: actual version of this portion/package/module
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -424,6 +424,12 @@ def main_app_instance() -> Optional['AppBase']:
     """
     with app_inst_lock:
         return _app_instances.get(_main_app_inst_key)
+
+
+def registered_app_names() -> List[str]:
+    """ determine the app names of all registered/running applications. """
+    with app_inst_lock:
+        return [app.app_name for app in _app_instances.values()]
 
 
 def _register_app_instance(app: 'AppBase'):
