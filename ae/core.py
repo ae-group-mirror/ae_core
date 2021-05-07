@@ -226,13 +226,13 @@ import traceback
 import weakref
 
 from io import StringIO
-from typing import Any, AnyStr, Dict, List, Optional, TextIO, Tuple, Union, cast
+from typing import Any, AnyStr, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
 
 from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii          # type: ignore
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.50'              #: actual version of this portion/package/module
+__version__ = '0.1.51'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -736,21 +736,26 @@ class AppBase:
         """ True if app is in verbose debug mode. """
         return self._debug_level >= DEBUG_LEVEL_VERBOSE
 
-    def call_method(self, method: str, *args, **kwargs) -> Any:
-        """ call method of this instance with the passed args, catching and logging exceptions preventing app exit.
+    def call_method(self, callback: Union[Callable, str], *args, **kwargs) -> Any:
+        """ call passed callable/method with the passed args, catching and logging exceptions preventing app exit.
 
-        :param method:      name of the main app method to call.
+        :param callback:    either a callable or the name of the main app method of this instance to call.
         :param args:        args passed to the main app method to be called.
         :param kwargs:      kwargs passed to the main app method to be called.
         :return:            return value of the called method or None if method throws exception or does not exist.
         """
-        event_callback = getattr(self, method, None)
-        if event_callback is not None:
-            assert callable(event_callback), f"AppBase.call_method: {method!r} is not callable ({args}, {kwargs})"
-            try:
-                return event_callback(*args, **kwargs)
-            except (AttributeError, IndexError, LookupError, ValueError, Exception) as ex:
-                self.po(f" ***  AppBase.call_method({method}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
+        if not callable(callback):
+            method_name = callback
+            callback = getattr(self, method_name, None)
+            if callback is None:
+                return None
+            assert callable(callback), f"AppBase.call_method: main app method {method_name!r} is not callable"
+
+        try:
+            return callback(*args, **kwargs)
+        except (AttributeError, IndexError, LookupError, ValueError, Exception) as ex:
+            self.po(f" ***  AppBase.call_method({callback}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
+
         return None
 
     def init_logging(self, py_logging_params: Optional[Dict[str, Any]] = None, log_file_name: str = "",

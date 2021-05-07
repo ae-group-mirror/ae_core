@@ -466,6 +466,24 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         app = AppBase()
         assert app.app_title == __doc__.strip()
 
+    def test_call_method_pass_silently_if_not_existing(self, restore_app_env):
+        app = AppBase()
+        method = 'not_existing_method'
+        assert not hasattr(app, method)
+        assert app.call_method(method) is None
+
+    def test_call_method_in_other_instance(self, restore_app_env):
+        app = AppBase()
+
+        class _OtherClass:
+            def _method(self, *args, **kwargs):
+                return self, args, kwargs
+
+        _instance = _OtherClass()
+        t_args = (1, 2, '3')
+        t_kwargs = dict(a=1, b=2, c='3')
+        assert app.call_method(_instance._method, *t_args, **t_kwargs) == (_instance, t_args, t_kwargs)
+
     def test_call_method_raise_if_not_callable(self, restore_app_env):
         app = AppBase()
         app.init_called = False
