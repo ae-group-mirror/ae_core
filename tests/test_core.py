@@ -175,7 +175,7 @@ class TestAeLogging:
                 assert invalid_log_content not in fc
 
     def test_app_instances_reset1(self):
-        assert main_app_instance() is None  # check if core._app_instances/._main_app_inst_key got reset correctly
+        assert main_app_instance() is None  # check if core._APP_INSTANCES/._MAIN_APP_INST_KEY got reset correctly
 
     def test_log_file_rotation_multi_threading(self, restore_app_env):
         log_file = 'test_ae_multi_log.log'
