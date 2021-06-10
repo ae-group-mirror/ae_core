@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.1.52'
+__version__ = '0.2.52'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
