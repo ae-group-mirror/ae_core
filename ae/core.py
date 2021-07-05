@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.2.52'
+__version__ = '0.2.53'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -716,7 +716,7 @@ class AppBase:
 
         try:
             return callback(*args, **kwargs)
-        except (AttributeError, IndexError, LookupError, ValueError, Exception) as ex:
+        except Exception as ex:     # AttributeError, LookupError, ValueError
             self.po(f" ***  AppBase.call_method({callback}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
 
         return None

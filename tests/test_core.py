@@ -60,7 +60,7 @@ class TestCoreHelpers:
         assert us in err
 
     def test_print_out_cov(self, capsys):
-        # print invalid/surrogate code point/char for to force UnicodeEncodeError exception in po() (testing coverage)
+        # print invalid/surrogate code point/char to force UnicodeEncodeError exception in po() (testing coverage)
         us = chr(0xD801)
         po(us, 123456, encode_errors_def='strict')      # .. also coverage of not-str args
         out, err = capsys.readouterr()
@@ -159,7 +159,7 @@ class TestAeLogging:
         fb, ext = os.path.splitext(log_file)    # simulate left-over log file from last app run - coverage
         idx = 1
         with open(f"{fb}-{idx:0>{LOG_FILE_IDX_WIDTH}}{ext}", 'w') as fp:
-            fp.write(f"log file content for to test left-over from last app run{invalid_log_content}")
+            fp.write(f"log file content to test left-over from last app run{invalid_log_content}")
         try:
             app = AppBase('test_cov_log_file_rotation', debug_level=DEBUG_LEVEL_VERBOSE)
             app.init_logging(log_file_name=log_file, log_file_size_max=.001)    # log file max size == 1 kB
@@ -555,11 +555,11 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         out, err = capsys.readouterr()
         assert us in out and us in err
 
-        # print invalid/surrogate code point/char for to force UnicodeEncodeError exception in po() (testing coverage)
+        # print invalid/surrogate code point/char to force UnicodeEncodeError exception in po() (testing coverage)
         us = chr(0xD801)
         app.po(us, encode_errors_def='strict')
 
-        # multi_threading has to be reset for to prevent debug test run freeze (added multi_threading for coverage)
+        # multi_threading has to be reset to prevent debug test run freeze (added multi_threading for coverage)
         _deactivate_multi_threading()
 
     def test_app_instances_reset2(self):
