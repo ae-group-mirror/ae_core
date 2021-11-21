@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.2.53'
+__version__ = '0.2.54'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -358,7 +358,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
                 print(*print_strings, sep=sep, end=end, file=file, flush=flush)
             break
         except UnicodeEncodeError:
-            fixed_objects = list()
+            fixed_objects = []
             for obj in objects:
                 if not isinstance(obj, str) and not isinstance(obj, bytes):
                     obj = str(obj)
@@ -489,7 +489,7 @@ class _PrintingReplicator:
         :param any_str:         string to output.
         """
         message = cast(bytes, any_str).decode() if isinstance(any_str, bytes) else any_str
-        app_streams: List[Tuple[Optional[AppBase], TextIO]] = list()
+        app_streams: List[Tuple[Optional[AppBase], TextIO]] = []
         with log_file_lock, app_inst_lock:
             for app in list(_APP_INSTANCES.values()):
                 stream = app.log_file_check(app.active_log_stream)  # check if log rotation or buf-to-file-switch needed
@@ -593,7 +593,7 @@ class AppBase:
     _log_file_name: str = ""                        #: log file name
     _log_with_timestamp: Union[bool, str] = False   #: True of strftime format string to enable timestamp
     _nul_std_out: Optional[TextIO] = None           #: logging null stream
-    py_log_params: Dict[str, Any] = dict()          #: dict of config parameters for py logging
+    py_log_params: Dict[str, Any] = {}              #: dict of config parameters for py logging
     _shut_down: bool = False                        #: True if this app instance got shut down already
 
     def __init__(self, app_title: str = '', app_name: str = '', app_version: str = '', sys_env_id: str = '',
@@ -774,7 +774,7 @@ class AppBase:
 
         :return:                log file line prefix string including one space as separator character at the end.
         """
-        parts = list()
+        parts = []
         if _MULTI_THREADING_ACTIVATED:
             parts.append(f"<{threading.get_ident(): >6}>")
         if self.app_key[-1] != APP_KEY_SEP:

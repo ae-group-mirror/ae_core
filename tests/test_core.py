@@ -10,7 +10,7 @@ from typing import cast, Any
 import pytest
 from conftest import delete_files
 
-from ae.base import DATE_TIME_ISO, force_encoding
+from ae.base import DATE_TIME_ISO, force_encoding, read_file, write_file
 # noinspection PyProtectedMember
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES, LOG_FILE_IDX_WIDTH,
@@ -104,24 +104,21 @@ class TestPrintingReplicator:
             msg = 'test_ascii_message'
             dso.write(msg)
             lfo.close()
-            with open(lfn) as f:
-                assert f.read() == msg
+            assert read_file(lfn) == msg
 
             lfo = open(lfn, 'w', encoding='utf-8')
             dso = _PrintingReplicator(lfo)
             msg = chr(40960) + chr(1972)            # == '\ua000\u07b4'
             dso.write(msg)
             lfo.close()
-            with open(lfn, encoding='utf-8') as f:
-                assert f.read() == msg
+            assert read_file(lfn, encoding='utf-8') == msg
 
             lfo = open(lfn, 'w', encoding='ascii')
             dso = _PrintingReplicator(lfo)
             msg = chr(40960) + chr(1972)            # == '\ua000\u07b4'
             dso.write(msg)
             lfo.close()
-            with open(lfn, encoding='ascii') as f:
-                assert f.read() == '\\ua000\\u07b4'
+            assert read_file(lfn, encoding='ascii') == '\\ua000\\u07b4'
 
             lfo = open(lfn, 'w')
             dso = _PrintingReplicator(lfo)
@@ -158,8 +155,8 @@ class TestAeLogging:
         invalid_log_content = "NeverAppearInLogFile"
         fb, ext = os.path.splitext(log_file)    # simulate left-over log file from last app run - coverage
         idx = 1
-        with open(f"{fb}-{idx:0>{LOG_FILE_IDX_WIDTH}}{ext}", 'w') as fp:
-            fp.write(f"log file content to test left-over from last app run{invalid_log_content}")
+        write_file(f"{fb}-{idx:0>{LOG_FILE_IDX_WIDTH}}{ext}",
+                   f"log file content to test left-over from last app run{invalid_log_content}")
         try:
             app = AppBase('test_cov_log_file_rotation', debug_level=DEBUG_LEVEL_VERBOSE)
             app.init_logging(log_file_name=log_file, log_file_size_max=.001)    # log file max size == 1 kB
