@@ -207,13 +207,13 @@ import traceback
 import weakref
 
 from io import StringIO
-from typing import Any, AnyStr, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
 
 from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii          # type: ignore
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.2.54'
+__version__ = '0.3.54'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -480,15 +480,15 @@ class _PrintingReplicator:
         """
         self.sys_out_obj = sys_out_obj
 
-    def write(self, any_str: AnyStr) -> None:
+    def write(self, any_str: Union[str, bytes]) -> None:
         """ write string to ae logging and standard output streams.
 
         automatically suppressing UnicodeEncodeErrors if console/shell or log file has different encoding by forcing
         re-encoding with DEF_ENCODE_ERRORS.
 
-        :param any_str:         string to output.
+        :param any_str:         string or bytes to output.
         """
-        message = cast(bytes, any_str).decode() if isinstance(any_str, bytes) else any_str
+        message = any_str.decode() if isinstance(any_str, bytes) else any_str
         app_streams: List[Tuple[Optional[AppBase], TextIO]] = []
         with log_file_lock, app_inst_lock:
             for app in list(_APP_INSTANCES.values()):
@@ -707,9 +707,9 @@ class AppBase:
     :param kwargs:              kwargs passed to the main app method to be called.
     :return:                    return value of the called method or None if method throws exception or does not exist.
         """
-        if not callable(callback):
+        if isinstance(callback, str):
             method_name = callback
-            callback = getattr(self, method_name, None)
+            callback = getattr(self, method_name, None)     # type: ignore
             if callback is None:
                 return None
             assert callable(callback), f"AppBase.call_method: main app method {method_name!r} is not callable"
