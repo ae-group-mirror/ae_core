@@ -20,7 +20,7 @@ the encoding of strings into byte-strings (to output them to the console/stdout 
 sometimes. to not lose any logging output because of invalid characters this module will automatically handle any
 :exc:`UnicodeEncodeError` exception for you. invalid characters will then automatically be converted to the default
 encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error handling method specified by
-:data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the :mod:`ae.base` namespace portion/module.
+:data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the :mod:`ae.base` namespace portion/module).
 
 
 core helper functions
@@ -43,7 +43,7 @@ of these sub-apps.
 
 sub-apps are very flexible and not tied to any fix use-case. they can be created e.g. for each sub-task or application
 thread. you could also create a :class:`SubApp` instance for each of your external systems, like a database server or to
-connect your application onto different test environments or to your live an your production system (e.g. for system
+connect your application onto different test environments or to your live/production system (e.g. for system
 comparison and maintenance).
 
 both application classes are automatically catching and handling any exceptions and run-time errors: only if any
@@ -116,7 +116,7 @@ additionally you can call the :meth:`~AppBase.init_logging` method to activate a
 your application and libraries will only appear in your log file.
 
 also in complex applications, where huge print-outs to the console can get lost easily, you want to use a log file
-instead. but even a single log file can get messy to read, especially for multi-threaded server applications. for that
+instead. but even a single log file can get messy to read, especially for multithreading server applications. for that
 :class:`SubApp` is allowing you to create for each thread a separate sub-app instance with its own log file.
 
 using this module ensures that any crashes or freezes happening in your application will be fully logged. apart from the
@@ -130,7 +130,7 @@ activate ae log file
 .. _ae-log-file:
 
 ae log files are text files using by default the encoding of your OS console/shell. to activate the redirection of your
-applications print-outs into a ae log file for a :class:`AppBase` instance you simply specify the file name of the log
+applications print-outs into an ae log file for a :class:`AppBase` instance you simply specify the file name of the log
 file in the :meth:`~AppBase.init_logging` method call::
 
     app = AppBase()
@@ -147,7 +147,7 @@ print-outs to the standard output/error streams pass ``True`` to the :paramref:`
     app = AppBase(multi_threading=True, suppress_stdout=True)
     app.init_logging(log_file_name='my_log_file.log')
 
-the ae log files provided by this module are automatically rotating if the size of an log file succeeds the value in
+the ae log files provided by this module are automatically rotating if the size of a log file succeeds the value in
 MBytes defined in the :data:`LOG_FILE_MAX_SIZE`. to adapt this value to your needs you can specify the maximum log file
 size in MBytes with the argument :paramref:`~AppBase.init_logging.log_file_size_max` in your call of
 :meth:`~AppBase.init_logging`::
@@ -177,7 +177,7 @@ will automatically disable the ae log file of this instance.
 application debugging
 ---------------------
 
-to use the debug features of :mod:`~.core` you simple have to import the needed
+to use the debug features of :mod:`~.core` you simply have to import the needed
 :ref:`debug level constant <debug-level-constants>` to pass it at instantiation of your :class:`AppBase` or
 :class:`SubApp` class to the :paramref:`~AppBase.debug_level` argument::
 
@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii  
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
 
 
-__version__ = '0.3.54'
+__version__ = '0.3.55'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -233,11 +233,11 @@ HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidd
 
 
 def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
-    """ replace duplicate characters at the begin of two strings with spaces.
+    """ replace duplicate characters at the start of two strings with spaces.
 
     :param last_line:       last line string (e.g. the last line of text/log file).
     :param current_line:    current line string.
-    :return:                current line string but duplicate characters at the begin are replaced by space characters.
+    :return:                current line string but duplicate characters at the beginning are replaced by space chars.
     """
     idx = 0
     min_len = min(len(last_line), len(current_line))
@@ -305,11 +305,11 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     :param kwargs:              catch unsupported kwargs for debugging (all items will be printed to all the activated
                                 logging/output streams).
 
-    this function is silently handling and auto-correcting string encode errors for output/log streams which are not
+    this function is silently handling and autocorrecting string encode errors for output/log streams which are not
     supporting unicode. any instance of :class:`AppBase` is providing this function as a method with the
     :func:`same name <AppBase.print_out>`). it is recommended to call/use this instance method instead of this function.
 
-    in multi-threaded applications this function prevents dismembered/fluttered print-outs from different threads.
+    in multithreading applications this function prevents dismembered/fluttered print-outs from different threads.
 
     .. note:: this function has an alias named :func:`.po`.
     """
@@ -352,7 +352,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
 
             if use_py_logger:
                 debug_level = app.debug_level if app else DEBUG_LEVEL_VERBOSE
-                if logger:      # mypy insists to have this extra check, although use_py_logger is including logger
+                if logger:      # mypy insists on have this extra check, although `use_py_logger` is including logger
                     logger.log(level=LOGGING_LEVELS[debug_level], msg=print_strings[0])
             else:
                 print(*print_strings, sep=sep, end=end, file=file, flush=flush)
@@ -567,7 +567,7 @@ class AppBase:
     * :attr:`_log_buf_stream`       ae log file buffer stream.
     * :attr:`_log_file_index`       index of the current rotation ae log file backup.
     * :attr:`_log_file_name`        path and file name of the ae log file.
-    * :attr:`_log_file_size_max`    maximum size in MBytes of a ae log file.
+    * :attr:`_log_file_size_max`    maximum size in MBytes of an ae log file.
     * :attr:`_log_file_stream`      ae log file TextIO output stream.
     * :attr:`_log_with_timestamp`   log timestamp line prefix if True or a non-empty strftime compatible format string.
     * :attr:`py_log_params`         python logging config dictionary.
@@ -764,7 +764,7 @@ class AppBase:
           angle brackets (< and >), right aligned and space padded to minimal 6 characters.
         * :attr:`sys_env_id`: if not empty then printed surrounded with curly brackets ({ and }), left aligned
           and space padded to minimal 4 characters.
-        * :attr:`_log_with_timestamp`: if (a) True or (b) an non-empty string then the system time
+        * :attr:`_log_with_timestamp`: if (a) True or (b) a non-empty string then the system time
           (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified either by the
           (a) the :data:`~ae.base.DATE_TIME_ISO` constant or (b) by the string in this attribute.
 
@@ -855,7 +855,7 @@ class AppBase:
     def debug_out(self, *objects, minimum_debug_level: int = DEBUG_LEVEL_ENABLED, **kwargs):
         """ special debug version of :func:`builtin print() function <print>`.
 
-        this method will print-out the passed objects only if the :attr:`current debug level
+        this method will print out the passed objects only if the :attr:`current debug level
         <.core.AppBase.debug_level>` of this app instance is higher than the value passed into the
         :paramref:`~debug_out.minimum_debug_level` argument. in this case the print-out will be
         delegated onto the :meth:`~.print_out`.
@@ -1003,7 +1003,7 @@ class AppBase:
         """ open the ae log file with path and file name specified by :attr:`_log_file_name`.
 
         tries to create a log sub-folder - if specified in :attr:`_log_file_name` and
-        the folder does not exists (folder creation is limited to one folder level).
+        the folder does not exist (folder creation is limited to one folder level).
 
         .. note:: a already existing file with the same file name will be overwritten (file contents get lost!).
         """
