@@ -22,6 +22,7 @@
       <w>kivy</w>
       <w>lineno</w>
       <w>lisz</w>
+      <w>maxbytes</w>
       <w>meipass</w>
       <w>meth</w>
       <w>modindex</w>
@@ -33,6 +34,7 @@
       <w>pluggy</w>
       <w>pycache</w>
       <w>pydev</w>
+      <w>pyfuncitem</w>
       <w>pyglet</w>
       <w>pygobject</w>
       <w>pylint</w>
