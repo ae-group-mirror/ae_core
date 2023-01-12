@@ -209,11 +209,11 @@ import weakref
 from io import StringIO
 from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
 
-from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, to_ascii          # type: ignore
-from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS    # type: ignore
+from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, stack_var, to_ascii           # type: ignore
+from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                # type: ignore
 
 
-__version__ = '0.3.56'
+__version__ = '0.3.57'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -615,13 +615,6 @@ class AppBase:
         :param multi_threading: pass True if instance is used in multi-threading app.
         :param suppress_stdout: pass True (for wsgi apps) to prevent any python print outputs to stdout.
         """
-        try:
-            from ae.inspector import stack_var      # type: ignore
-        except ImportError:                         # pragma: no cover
-            def stack_var(key: str) -> str:
-                """ get default value for app title and version (if ae.inspector is not provided/available). """
-                return f"AppBase.__init__(): stack_var() not imported to determine {key} value"
-
         self.startup_beg: datetime.datetime = datetime.datetime.now()   #: begin of app startup datetime
         self.app_path: str = os.path.dirname(sys.argv[0])               #: path to folder of your main app code file
 
