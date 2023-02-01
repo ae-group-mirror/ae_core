@@ -551,13 +551,16 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         t_kwargs = dict(a=1, b=2, c='3')
         assert app.call_method(_instance._method, *t_args, **t_kwargs) == (_instance, t_args, t_kwargs)
 
-    def test_call_method_raise_if_not_callable(self, restore_app_env):
+    def test_call_method_no_exception_if_not_exists(self, restore_app_env):
+        app = AppBase()
+        app.call_method('not_existing_method_name')
+
+    def test_call_method_no_exception_if_not_callable(self, restore_app_env):
         app = AppBase()
         app.init_called = False
-        with pytest.raises(AssertionError):
-            app.call_method('init_called')
+        app.call_method('init_called')
 
-    def test_call_method_catch_attr_error_exception(self, restore_app_env):
+    def test_call_method_no_exception_if_raises_exception(self, restore_app_env):
         app = AppBase()
 
         def _raising_ex():
@@ -565,6 +568,11 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             raise AttributeError
         setattr(app, 'test_raiser', _raising_ex)
         app.call_method('test_raiser')
+
+    def test_call_method_no_exception_if_error_in_lambda(self, restore_app_env):
+        app = AppBase()
+        app.test_method = lambda *_args: 3 / 0
+        app.call_method('test_method')
 
     def test_call_method_catch_lookup_error_exception(self, restore_app_env):
         app = AppBase()

@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, stack_var,
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                # type: ignore
 
 
-__version__ = '0.3.57'
+__version__ = '0.3.58'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -695,20 +695,18 @@ class AppBase:
     def call_method(self, callback: Union[Callable, str], *args, **kwargs) -> Any:
         """ call passed callable/method with the passed args, catching and logging exceptions preventing app exit.
 
-    :param callback:            either a callable or the name of the main app method of this instance to call.
-    :param args:                args passed to the main app method to be called.
-    :param kwargs:              kwargs passed to the main app method to be called.
-    :return:                    return value of the called method or None if method throws exception or does not exist.
+        :param callback:            either a callable or the name of the main app method of this instance to call.
+        :param args:                args passed to the main app method to be called.
+        :param kwargs:              kwargs passed to the main app method to be called.
+        :return:                    return value of the called method or None if method throws exception/does not exist.
         """
         if isinstance(callback, str):
-            method_name = callback
-            callback = getattr(self, method_name, None)     # type: ignore
+            callback = getattr(self, callback, None)    # type: ignore
             if callback is None:
                 return None
-            assert callable(callback), f"AppBase.call_method: main app method {method_name!r} is not callable"
 
         try:
-            return callback(*args, **kwargs)
+            return callback(*args, **kwargs)            # type: ignore
         except Exception as ex:     # AttributeError, LookupError, ValueError
             self.po(f" ***  AppBase.call_method({callback}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
 
