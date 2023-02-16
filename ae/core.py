@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, stack_var,
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                # type: ignore
 
 
-__version__ = '0.3.58'
+__version__ = '0.3.59'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -616,7 +616,10 @@ class AppBase:
         :param suppress_stdout: pass True (for wsgi apps) to prevent any python print outputs to stdout.
         """
         self.startup_beg: datetime.datetime = datetime.datetime.now()   #: begin of app startup datetime
-        self.app_path: str = os.path.dirname(sys.argv[0])               #: path to folder of your main app code file
+        app_path = sys.argv[0]
+        if not os.path.isdir(app_path):                                 # if it is a console app module (not a package)
+            app_path = os.path.dirname(app_path)                        # .. then remove the module file name
+        self.app_path: str = app_path                                   #: path to folder of your main app code file
 
         if not app_title:
             doc_str = stack_var('__doc__')
