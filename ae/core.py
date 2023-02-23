@@ -87,8 +87,8 @@ the class :class:`~ae.console.ConsoleApp` e.g. inherits from :class:`AppBase` an
 variables to it. so in your console application it is recommended to directly use instances of
 :class:`~ae.console.ConsoleApp` instead of :class:`AppBase`.
 
-for applications with an GUI use instead one of the classes :class:`~ae.kivy_app.KivyApp`,
-:class:`~ae.enaml_app.EnamlApp` or :class:`~ae.toga_app.TogaApp`.
+for applications with an GUI use instead one of the classes :class:`~ae.kivy.apps.KivyMainApp`,
+:class:`~ae.enaml_app.EnamlMainApp` or :class:`~ae.toga_app.TogaMainApp`.
 
 
 application logging
@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, stack_var,
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                # type: ignore
 
 
-__version__ = '0.3.59'
+__version__ = '0.3.60'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -710,7 +710,7 @@ class AppBase:
 
         try:
             return callback(*args, **kwargs)            # type: ignore
-        except Exception as ex:     # AttributeError, LookupError, ValueError
+        except Exception as ex:     # AttributeError, LookupError, TypeError, ValueError
             self.po(f" ***  AppBase.call_method({callback}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
 
         return None
