@@ -213,7 +213,7 @@ from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, stack_var,
 from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                # type: ignore
 
 
-__version__ = '0.3.60'
+__version__ = '0.3.61'
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -857,7 +857,7 @@ class AppBase:
         :param objects:             objects to be printed out.
         :param minimum_debug_level: minimum debug level to print the passed objects.
         :param kwargs:              all the supported kwargs of this method are documented at the
-                                    :func:`print_out() function <~.core.print_out>` of the :mod:`~ae.core` module
+                                    :func:`print_out() function <core.print_out>` of the :mod:`~ae.core` module
                                     (including the :paramref:`~.print_out.file` argument).
 
         this method has an alias named :meth:`.dpo`.
@@ -874,7 +874,7 @@ class AppBase:
         :param kwargs:          the :paramref:`~.core.AppBase.print_out.file` argument is documented at the
                                 :meth:`~.core.AppBase.print_out` method of the :class:`~.core.AppBase` class. all other
                                 supported kwargs of this method are documented at the
-                                :func:`print_out() function <~.core.print_out>` of the :mod:`~.core` module.
+                                :func:`print_out() function <~ae.core.print_out>` of the :mod:`~.core` module.
 
         this method has an alias named :meth:`.vpo`.
         """
