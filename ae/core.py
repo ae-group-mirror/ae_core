@@ -2,8 +2,15 @@
 application core constants, helper functions and base classes
 =============================================================
 
-this module declares practical constants, tiny helper functions and app base classes, which are reducing the code of
-your application (and of other ae namespace modules/portions).
+this module declares app-specific core constants, helper functions and base classes for all operating systems
+and GUI frameworks that are supported by the ae portions namespace, in order to reduce the amount of code of
+your application project (and of other ae namespace modules/portions).
+
+.. note::
+    on import of this portion, before any of the app environment got initialized, it calls the function
+    :func:`~ae.updater.check_all` of the :mod:`ae.updater` portion in order to prepare the app
+    on first start after their installation, and to check for updates of the app on every app start.
+
 
 core constants
 --------------
@@ -22,15 +29,24 @@ sometimes. to not lose any logging output because of invalid characters this mod
 encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error handling method specified by
 :data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the :mod:`ae.base` namespace portion/module).
 
+the constants :data:`PACKAGE_NAME`, :data:`PACKAGE_DOMAIN` and :data:`PERMISSIONS` are mainly used for
+apps running on mobile devices (Android or iOS). to avoid redundancies, these values get loaded and registered
+from the :data:`build config file <ae.base.BUILD_CONFIG_FILE>` - if it exists in the current working directory.
+
 
 core helper functions
 ---------------------
 
 the :func:`print_out` function, which is fully compatible to pythons :func:`print`, is using the encode helpers
-:func:`~ae.base.force_encoding` and :func:`~.ae.base.to_ascii` to auto-correct invalid characters.
+:func:`~ae.base.force_encoding` and :func:`~.ae.base.to_ascii` to autocorrect invalid characters.
 
 the function :func:`hide_dup_line_prefix` is very practical if you want to remove or hide redundant line prefixes in
 your log files, to make them better readable.
+
+the two functions :func:`request_app_permissions` and :func:`start_app_service` get only implemented if your app is
+running in Android OS; in other systems they are declared no-op dummy functions. the first one get called automatically
+on app start to request permissions from the app user (if not already granted), and the second one allows you
+to start a background service for your app.
 
 
 application base classes
@@ -140,7 +156,7 @@ file in the :meth:`~AppBase.init_logging` method call::
 activate ae logging features
 ............................
 
-for multi-threaded applications include the thread-id of the printing thread automatically into your log files by
+for multithreaded applications include the thread-id of the printing thread automatically into your log files by
 passing a ``True`` value to the :paramref:`~AppBase.multi_threading` argument. to additionally also suppress any
 print-outs to the standard output/error streams pass ``True`` to the :paramref:`~AppBase.suppress_stdout` argument::
 
@@ -209,11 +225,91 @@ import weakref
 from io import StringIO
 from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
 
-from ae.base import DATE_TIME_ISO, DEF_ENCODE_ERRORS, force_encoding, stack_var, to_ascii           # type: ignore
-from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                # type: ignore
+from ae.base import (                                                                                   # type: ignore
+    BUILD_CONFIG_FILE, DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
+    build_config_variable_values, dummy_function, force_encoding, norm_path,
+    os_path_basename, os_path_splitext, os_platform, os_path_dirname, os_path_isdir, os_path_isfile,
+    stack_var, to_ascii, write_file)
+from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                    # type: ignore
+from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.62'
+__version__ = '0.3.63'
+
+
+# check/install early (on import of this module) for first-app-run-installations or new/outstanding app-version updates
+check_all()
+
+
+# package and permissions handling defaults for all platforms and frameworks
+PACKAGE_NAME = stack_var('__name__') or 'unspecified_package'                       #: package name default
+PACKAGE_DOMAIN = 'org.test'                                                         #: package domain default
+PERMISSIONS = "INTERNET,VIBRATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE"
+if os_path_isfile(BUILD_CONFIG_FILE):                           # pragma: no cover
+    PACKAGE_NAME, PACKAGE_DOMAIN, PERMISSIONS = build_config_variable_values(
+        ('package.name', PACKAGE_NAME),
+        ('package.domain', PACKAGE_DOMAIN),
+        ('android.permissions', PERMISSIONS))
+elif os_platform == 'android':                                  # pragma: no cover
+    _importing_package = norm_path(stack_var('__file__') or 'empty_package' + PY_EXT)
+    if os_path_basename(_importing_package) in (PY_INIT, PY_MAIN):
+        _importing_package = os_path_dirname(_importing_package)
+    _importing_package = os_path_splitext(os_path_basename(_importing_package))[0]
+    write_file(f'{_importing_package}_debug.log', f"{BUILD_CONFIG_FILE} not bundled - using defaults\n", extra_mode='a')
+
+
+if os_platform == 'android':  # pragma: no cover
+    # import permissions module from python-for-android (recipes/android/src/android/permissions.py)
+    # noinspection PyUnresolvedReferences
+    from android.permissions import request_permissions, Permission     # type: ignore # pylint: disable=import-error
+    from jnius import autoclass                                         # type: ignore
+
+    def request_app_permissions(callback: Optional[Callable[[List[Permission], List[bool]], None]] = None):
+        """ request app/service permissions on Android OS.
+
+        :param callback:        optional callback receiving two list arguments with identical length,
+                                the 1st with the requested permissions and
+                                the 2nd with booleans stating if the permission got granted (True) or rejected (False).
+        """
+        permissions = []
+        for permission_str in PERMISSIONS.split(','):
+            permission = getattr(Permission, permission_str.strip(), None)
+            if permission:
+                permissions.append(permission)
+        request_permissions(permissions, callback=callback)
+
+    def start_app_service(service_arg: str = "") -> Any:
+        """ start service.
+
+        :param service_arg:     string value to be assigned to environment variable PYTHON_SERVICE_ARGUMENT on start.
+        :return:                service instance.
+
+        links to other android code and service examples and documentation:
+
+            * `https://python-for-android.readthedocs.io/en/latest/`__
+            * `https://github.com/kivy/python-for-android/tree/develop/pythonforandroid/recipes/android/src/android`__
+            * `https://github.com/tshirtman/kivy_service_osc/blob/master/src/main.py`__
+            * `https://python-for-android.readthedocs.io/en/latest/services/#arbitrary-scripts-services`__
+            * `https://blog.kivy.org/2014/01/building-a-background-application-on-android-with-kivy/`__
+            * `https://github.com/Android-for-Python/Android-for-Python-Users`__
+            * `https://github.com/Android-for-Python/INDEX-of-Examples`__
+
+        big thanks to `Robert Flatt <https://github.com/RobertFlatt>`__ for his investigations, findings and
+        documentations to code and build Kivy apps for the Android OS, and to
+        `Gabriel Pettier <https://github.com/tshirtman>`__ for his service osc example.
+
+        """
+        service_instance = autoclass(f"{PACKAGE_DOMAIN}.{PACKAGE_NAME}.Service{PACKAGE_NAME.capitalize()}")
+        activity = autoclass('org.kivy.android.PythonActivity').mActivity
+        service_instance.start(activity, service_arg)        # service_arg will be in env var PYTHON_SERVICE_ARGUMENT
+
+        return service_instance
+
+    request_app_permissions()   # if not yet granted then request permissions from the app user on (first) app start
+
+else:
+    request_app_permissions = dummy_function
+    start_app_service = dummy_function
 
 
 # DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
@@ -290,8 +386,9 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     :param objects:             tuple of objects to be printed. if the first object is a string that starts with a \\\\r
                                 character then the print-out will be only sent to the standard output (and will not be
                                 added to any active log files - see also :paramref:`~print_out.end` argument).
-    :param sep:                 separator character between each printed object/string (def=" ").
-    :param end:                 finalizing character added to the end of this print-out (def="\\\\n"). pass \\\\r to
+    :param sep:                 separator character between each printed object/string (defaults to a space char).
+    :param end:                 finalizing character added to the end of this print-out (defaults to a
+                                new-line char/\\\\n). pass a carriage-return char (\\\\r) in order to
                                 suppress the print-out into :ref:`ae log file <ae-log-file>` or to any activated python
                                 logger - useful for console/shell processing animation (see :meth:`.tcp.TcpServer.run`).
     :param file:                output stream object to be printed to (def=None which will use standard output streams).
@@ -306,8 +403,8 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
                                 logging/output streams).
 
     this function is silently handling and autocorrecting string encode errors for output/log streams which are not
-    supporting unicode. any instance of :class:`AppBase` is providing this function as a method with the
-    :func:`same name <AppBase.print_out>`). it is recommended to call/use this instance method instead of this function.
+    supporting Unicode. any instance of :class:`AppBase` is providing this function as a method with the
+    :func:`same name <AppBase.print_out>`. it is recommended to call/use this instance method instead of this function.
 
     in multithreading applications this function prevents dismembered/fluttered print-outs from different threads.
 
@@ -617,8 +714,8 @@ class AppBase:
         """
         self.startup_beg: datetime.datetime = datetime.datetime.now()   #: begin of app startup datetime
         app_path = sys.argv[0]
-        if not os.path.isdir(app_path):                                 # if it is a console app module (not a package)
-            app_path = os.path.dirname(app_path)                        # .. then remove the module file name
+        if not os_path_isdir(app_path):                                 # if it is a console app module (not a package)
+            app_path = os_path_dirname(app_path)                        # .. then remove the module file name
         self.app_path: str = app_path                                   #: path to folder of your main app code file
 
         if not app_title:
@@ -971,8 +1068,10 @@ class AppBase:
         try:
             try:
                 # cannot use print_out() here because of recursions on log file rotation, so use built-in print()
+                # noinspection PyTypeChecker
                 print(file=stream_file)
                 if self.debug:
+                    # noinspection PyTypeChecker
                     print('EoF', file=stream_file)
             except Exception as ex:     # pragma: no cover - pylint: disable=broad-except
                 self.po(f"Ignorable {stream_name} end-of-file marker exception={ex}", logger=_LOGGER)
@@ -999,10 +1098,10 @@ class AppBase:
         tries to create a log sub-folder - if specified in :attr:`_log_file_name` and
         the folder does not exist (folder creation is limited to one folder level).
 
-        .. note:: a already existing file with the same file name will be overwritten (file contents get lost!).
+        .. note:: an already existing file with the same file name will be overwritten (file contents get lost!).
         """
-        log_dir = os.path.dirname(self._log_file_name)
-        if log_dir and not os.path.exists(log_dir):
+        log_dir = os_path_dirname(self._log_file_name)
+        if log_dir and not os_path_isdir(log_dir):
             os.mkdir(log_dir)
         self._log_file_stream = open(self._log_file_name, "w", errors=DEF_ENCODE_ERRORS)
 
@@ -1017,18 +1116,18 @@ class AppBase:
     def _rename_log_file(self):
         """ rename rotating log file while keeping first/startup log and log file count below :data:`MAX_NUM_LOG_FILE`.
         """
-        file_base, file_ext = os.path.splitext(self._log_file_name)
+        file_base, file_ext = os_path_splitext(self._log_file_name)
         dfn = f"{file_base}-{self._log_file_index:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
-        if os.path.exists(dfn):
+        if os_path_isfile(dfn):
             os.remove(dfn)                              # remove old log file from previous app run
-        if os.path.exists(self._log_file_name):         # prevent errors after log file error or unit test cleanup
+        if os_path_isfile(self._log_file_name):         # prevent errors after log file error or unit test cleanup
             os.rename(self._log_file_name, dfn)
 
         self._log_file_index += 1
         if self._log_file_index > MAX_NUM_LOG_FILES:    # use > instead of >= to always keep first/startup log file
             first_idx = self._log_file_index - MAX_NUM_LOG_FILES
             dfn = f"{file_base}-{first_idx:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
-            if os.path.exists(dfn):
+            if os_path_isfile(dfn):
                 os.remove(dfn)
 
 

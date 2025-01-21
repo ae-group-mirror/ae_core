@@ -1,3 +1,4 @@
 # ae.core dependencies
 ae_base
 ae_paths
+ae_updater
