@@ -1,13 +1,13 @@
 """ test doc string for AppBase.app_title tests. """
-
 import datetime
 import logging
 import os
+import pytest
 import sys
 import threading
+
 from typing import cast, Any
 
-import pytest
 from conftest import delete_files
 
 from ae.base import DATE_TIME_ISO, force_encoding, read_file, write_file
@@ -15,9 +15,9 @@ from ae.base import DATE_TIME_ISO, force_encoding, read_file, write_file
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES,
     LOG_FILE_IDX_WIDTH,
-    activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, po,
+    activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
     registered_app_names,
-    AppBase, _PrintingReplicator, SubApp)
+    AppBase, _PrintingReplicator)
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
@@ -35,39 +35,39 @@ class TestCoreHelpers:
         assert hide_dup_line_prefix(l1, l2) == " " * 3 + l1
 
     def test_print_out_basics(self, capsys):
-        po()
+        print_out()
         out, err = capsys.readouterr()
         assert out == '\n' and err == ''
 
-        po(invalid_kwarg='ika')
+        print_out(invalid_kwarg='ika')
         out, err = capsys.readouterr()
         assert 'ika' in out and err == ''
 
         us = chr(40960) + chr(1972) + chr(2013) + 'äöü'
-        po(us, encode_errors_def='strict')
+        print_out(us, encode_errors_def='strict')
         out, err = capsys.readouterr()
         assert us in out and err == ''
 
-        po(us, file=sys.stdout)
-        po(us, file=sys.stderr)
+        print_out(us, file=sys.stdout)
+        print_out(us, file=sys.stderr)
         fna = 'print_out.txt'
         fhd = open(fna, 'w', encoding='ascii', errors='strict')
-        po(us, file=fhd)
+        print_out(us, file=fhd)
         fhd.close()
         assert delete_files(fna) == 1
-        po(bytes(chr(0xef) + chr(0xbb) + chr(0xbf), encoding='utf-8'))
+        print_out(bytes(chr(0xef) + chr(0xbb) + chr(0xbf), encoding='utf-8'))
         out, err = capsys.readouterr()
         assert us in out
         assert us in err
 
     def test_print_out_cov(self, capsys):
-        # print invalid/surrogate code point/char to force UnicodeEncodeError exception in po() (testing coverage)
+        # print invalid/surrogate code point/char to force UnicodeEncodeError exception in print_out() (test coverage)
         us = chr(0xD801)
-        po(us, 123456, encode_errors_def='strict')      # .. also coverage of not-str args
+        print_out(us, 123456, encode_errors_def='strict')      # .. also coverage of not-str args
         out, err = capsys.readouterr()
         assert force_encoding(us) in out and '123456' in out and err == ''
 
-        po('\r', 123456)     # coverage of processing output (not captured by pytest)
+        print_out('\r', 123456)     # coverage of processing output (not captured by pytest)
         out, err = capsys.readouterr()
         assert out == '' and err == ''
 
@@ -247,9 +247,9 @@ class TestAeLogging:
         try:
             app = AppBase('test_main_app')
             app.init_logging(log_file_name=mp + log_file)
-            sub = SubApp('test_sub_app', app_name=sp)
+            sub = AppBase('test_sub_app', app_name=sp)
             sub.init_logging(log_file_name=sp + log_file)
-            po(mp + tst_out + "_1")
+            print_out(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")
             sub.po(sp + tst_out)
             sub.init_logging()
@@ -277,7 +277,7 @@ class TestAeLogging:
         def sub_app_po():
             """ test thread function """
             nonlocal sub, sub_printed
-            sub = SubApp('test_sub_app_thread', app_name=sp)
+            sub = AppBase('test_sub_app_thread', app_name=sp)
             sub.init_logging(log_file_name=sp + log_file)
             sub.po(sp + tst_out)
             sub_printed = True
@@ -294,7 +294,7 @@ class TestAeLogging:
             sub_thread.start()
             while not sub_printed:      # NOT ENOUGH fails on gitlab CI: not sub or not sub.active_log_stream:
                 pass                    # wait until sub-thread has called init_logging()
-            po(mp + tst_out + "_1")
+            print_out(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")
             sub.init_logging()          # close sub-app log file created by sub_thread
             sub_thread.join()
@@ -388,7 +388,6 @@ class TestPythonLogging:
 
         cae = AppBase('test_python_logging_params_dict_file')
         cae.init_logging(py_logging_params=var_val)
-
 
         assert cae.py_log_params == var_val
 
@@ -632,7 +631,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         out, err = capsys.readouterr()
         assert us in out and us in err
 
-        # print invalid/surrogate code point/char to force UnicodeEncodeError exception in po() (testing coverage)
+        # print invalid/surrogate code point/char to force UnicodeEncodeError exception in print_out() (test coverage)
         us = chr(0xD801)
         app.po(us, encode_errors_def='strict')
 

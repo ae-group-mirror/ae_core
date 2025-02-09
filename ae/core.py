@@ -49,23 +49,21 @@ on app start to request permissions from the app user (if not already granted), 
 to start a background service for your app.
 
 
-application base classes
-------------------------
+base class for main- and sub-app threads
+----------------------------------------
 
-the classes :class:`AppBase` and :class:`SubApp` are applying logging and debugging features to your application. create
-in your application one instance of :class:`AppBase` to represent the main application task. if your application needs a
-separate logging/debugging configuration for sub-threads or sub-tasks then create an :class:`SubApp` instance for each
-of these sub-apps.
+to apply logging and debugging features to your application, at least one instance of the
+class :class:`~ae.core.AppBase`, provided by this portion, has to be created. only the first instance
+of this class created at run-time represents the main application thread, having the value `True`
+in its app instance property :attr:`~ae.core.AppBase.is_main`.
 
-sub-apps are very flexible and not tied to any fix use-case. they can be created e.g. for each sub-task or application
-thread. you could also create a :class:`SubApp` instance for each of your external systems, like a database server or to
-connect your application onto different test environments or to your live/production system (e.g. for system
-comparison and maintenance).
+additional sub-app instances of :class:`~ae.core.AppBase` can be created, if your app needs separate
+logging/debugging configuration for one of their sub-threads (e.g. for
+web or database server threads integrated in your app).
 
-both application classes are automatically catching and handling any exceptions and run-time errors: only if any
-critical exception/error cannot be handled then the :meth:`~AppBase.shutdown` method will make sure that all sub-apps
-and threads get terminated and joined. additionally all print-out buffers will be flushed to include all the info of the
-critical error (the last debug and error messages) into the standard error/output and into any activated log files.
+the :meth:`~AppBase.shutdown` method will make sure that first all the created sub-thread instances will get
+terminated and joined to the main app thread. additionally all print-out buffers will be flushed into any
+activated log files.
 
 
 basic usage of an application base class
@@ -133,7 +131,8 @@ your application and libraries will only appear in your log file.
 
 also in complex applications, where huge print-outs to the console can get lost easily, you want to use a log file
 instead. but even a single log file can get messy to read, especially for multithreading server applications. for that
-:class:`SubApp` is allowing you to create for each thread a separate sub-app instance with its own log file.
+additional sub-app/sub-thread instances of :class:`~ae.console.ConsoleApp` can be created for each thread/sub-app
+in order to specify their separate/own log file configuration.
 
 using this module ensures that any crashes or freezes happening in your application will be fully logged. apart from the
 gracefully handling of :exc:`UnicodeEncodeError` exceptions, the :mod:`Python faulthandler <faulthandler>` will be
@@ -194,10 +193,10 @@ application debugging
 ---------------------
 
 to use the debug features of :mod:`~.core` you simply have to import the needed
-:ref:`debug level constant <debug-level-constants>` to pass it at instantiation of your :class:`AppBase` or
-:class:`SubApp` class to the :paramref:`~AppBase.debug_level` argument::
+:ref:`debug level constant <debug-level-constants>` to pass it at instantiation of your :class:`AppBase` class
+to the :paramref:`~AppBase.debug_level` argument::
 
-    app = AppBase(..., debug_level= :data:`DEBUG_LEVEL_ENABLED`)     # same for :class:`SubApp`
+    app = AppBase(..., debug_level= :data:`DEBUG_LEVEL_ENABLED`)
 
 by passing :data:`DEBUG_LEVEL_ENABLED` the print-outs (and log file contents) will be more detailed, and even more
 verbose if you use instead the debug level :data:`DEBUG_LEVEL_VERBOSE`.
@@ -230,11 +229,11 @@ from ae.base import (                                                           
     build_config_variable_values, dummy_function, force_encoding, norm_path,
     os_path_basename, os_path_splitext, os_platform, os_path_dirname, os_path_isdir, os_path_isfile,
     stack_var, to_ascii, write_file)
-from ae.paths import app_name_guess, app_data_path, app_docs_path, PATH_PLACEHOLDERS                    # type: ignore
+from ae.paths import app_name_guess                                                                     # type: ignore
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.63'
+__version__ = '0.3.64'
 
 
 # check/install early (on import of this module) for first-app-run-installations or new/outstanding app-version updates
@@ -472,9 +471,6 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
             break
 
 
-po = print_out              #: alias of function :func:`.print_out`
-
-
 APP_KEY_SEP: str = '@'      #: separator character used in :attr:`~AppBase.app_key` of :class:`AppBase` instance
 
 # had to use type comment because the following line is throwing an error in the Sphinx docs make:
@@ -551,17 +547,16 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
 
 
 def _shut_down_sub_app_instances(timeout: Optional[float] = None):
-    """ shut down all :class:`SubApp` instances.
+    """ shut down all sub-thread/sub-app instances.
 
-    :param timeout:             timeout float value in seconds used for the :class:`SubApp` shutdowns and for the
+    :param timeout:             timeout float value in seconds used for the sub-app shutdowns and for the
                                 acquisition of the threading locks of :data:`the ae log file <log_file_lock>` and the
                                 :data:`app instances <app_inst_lock>`.
     """
     aqc_kwargs: Dict[str, Any] = (dict(blocking=False) if timeout is None else dict(timeout=timeout))
     blocked = app_inst_lock.acquire(**aqc_kwargs)
-    main_app = main_app_instance()
-    for app in list(_APP_INSTANCES.values()):   # list is needed because weak ref dict get changed in loop
-        if app is not main_app:
+    for app in reversed(list(_APP_INSTANCES.values())):     # list is needed because weak ref dict get changed in loop
+        if not app.is_main:
             app.shutdown(timeout=timeout)
     if blocked:
         app_inst_lock.release()
@@ -637,9 +632,9 @@ def _join_app_threads(timeout: Optional[float] = None):
     """
     global _APP_THREADS
     main_thread = threading.current_thread()
-    for app_thread in list(_APP_THREADS.values()):     # threading.enumerate() also includes PyCharm/pytest threads
+    for app_thread in reversed(list(_APP_THREADS.values())):    # threading.enumerate() includes PyCharm/pytest threads
         if app_thread is not main_thread:
-            po(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.getName()}", logger=_LOGGER)
+            print_out(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.getName()}", logger=_LOGGER)
             app_thread.join(timeout)
             if app_thread.ident is not None:     # mypy needs it because ident is Optional
                 _APP_THREADS.pop(app_thread.ident)
@@ -721,27 +716,17 @@ class AppBase:
         if not app_title:
             doc_str = stack_var('__doc__')
             app_title = doc_str.strip().split('\n')[0] if doc_str else ""
-        if app_name:
-            PATH_PLACEHOLDERS['app_name'] = app_name
-            PATH_PLACEHOLDERS['app'] = app_data_path()
-            PATH_PLACEHOLDERS['ado'] = app_docs_path()
-        else:
-            app_name = app_name_guess()
-        if PATH_PLACEHOLDERS.get('main_app_name', "") in ("", 'pyTstConsAppKey', '_jb_pytest_runner'):
-            PATH_PLACEHOLDERS['main_app_name'] = app_name
-        if not app_version:
-            app_version = stack_var('__version__') or ""
+        self.app_title: str = app_title                                         #: title of this app instance
+        self.app_name: str = app_name or app_name_guess()                       #: name of this app instance
+        self.app_version: str = app_version or stack_var('__version__') or ""   #: version of this app instance
+        self._debug_level: int = debug_level                                    #: debug level of this app instance
+        self.sys_env_id: str = sys_env_id                                       #: system environment id of this app
 
-        self.app_title: str = app_title                         #: title/description of this app instance
-        self.app_name: str = app_name                           #: name of this app instance
-        self.app_version: str = app_version                     #: version of this app instance
-        self._debug_level: int = debug_level                    #: debug level of this app instance
-        self.sys_env_id: str = sys_env_id                       #: system environment id of this app instance
         if multi_threading:
             activate_multi_threading()
-        self.suppress_stdout: bool = suppress_stdout            #: flag to suppress prints to stdout
 
-        self.startup_end: Optional[datetime.datetime] = None    #: end datetime of the application startup
+        self.suppress_stdout: bool = suppress_stdout                            #: flag to suppress prints to stdout
+        self.startup_end: Optional[datetime.datetime] = None                    #: end datetime of the app startup
 
         _register_app_thread()
         _register_app_instance(self)
@@ -786,6 +771,11 @@ class AppBase:
     def debug(self) -> bool:
         """ True if app is in debug mode. """
         return self._debug_level >= DEBUG_LEVEL_ENABLED
+
+    @property
+    def is_main(self) -> bool:
+        """ True if this app instance is the main/first one or if there is already no main app instance. """
+        return main_app_instance() in (None, self)
 
     @property
     def verbose(self) -> bool:
@@ -924,15 +914,15 @@ class AppBase:
 
         :param objects:         objects to be printed out.
         :param file:            output stream object to be printed to (def=None). passing None on a main app instance
-                                will print the objects to the standard output and any active log files, but on a
-                                :class:`SubApp` instance with an active log file the print-out will get redirected
-                                exclusively/only to log file of this :class:`SubApp` instance.
+                                will print the objects to the standard output and any active log files. in contrary,
+                                on a sub-app/sub-thread instance with an active log file the print-out
+                                will get redirected exclusively/only to log file of this sub-app instance.
         :param kwargs:          all the other supported kwargs of this method are documented
                                 :func:`at the print_out() function of this module <print_out>`.
 
         this method has an alias named :meth:`.po`
         """
-        if file is None and main_app_instance() is not self:
+        if file is None and not self.is_main:
             with log_file_lock:
                 file = self._log_buf_stream or self._log_file_stream
         if file:
@@ -986,13 +976,13 @@ class AppBase:
         :param exit_code:       set application OS exit code - ignored if this is NOT the main app instance (def=0).
                                 pass None to prevent call of sys.exit(exit_code).
         :param timeout:         timeout float value in seconds used for the thread termination/joining, for the
-                                :class:`SubApp` shutdowns and for the acquisition of the threading locks of
+                                shutdowns of the app/sub-app instances and for the acquisition of the threading locks of
                                 :data:`the ae log file <log_file_lock>` and the :data:`app instances <app_inst_lock>`.
         """
         if self._shut_down:
             return
         aqc_kwargs: Dict[str, Any] = dict(blocking=False) if timeout is None else dict(timeout=timeout)
-        is_main_app_instance = main_app_instance() is self
+        is_main_app_instance = self.is_main
         force = is_main_app_instance and exit_code      # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
@@ -1037,7 +1027,7 @@ class AppBase:
 
         :param redirect:        pass ``True`` to enable or ``False`` to disable the redirection.
         """
-        is_main_app_instance = main_app_instance() is self
+        is_main_app_instance = self.is_main
         if redirect:
             if not isinstance(sys.stdout, _PrintingReplicator):  # sys.stdout==ori_std_out not works with pytest/capsys
                 if not self.suppress_stdout:
@@ -1129,13 +1119,3 @@ class AppBase:
             dfn = f"{file_base}-{first_idx:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
             if os_path_isfile(dfn):
                 os.remove(dfn)
-
-
-class SubApp(AppBase):
-    """ separate/additional sub-app/thread/task with own/individual logging/debug configuration.
-
-    create an instance of this class for every extra thread and task where your application needs separate
-    logging and/or debug configuration - additional to the main app instance.
-
-    all members of this class are documented at the :class:`AppBase` class.
-    """
