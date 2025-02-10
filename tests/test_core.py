@@ -7,17 +7,21 @@ import sys
 import threading
 
 from typing import cast, Any
+from unittest.mock import patch
 
 from conftest import delete_files
 
 from ae.base import DATE_TIME_ISO, force_encoding, read_file, write_file
+from ae.paths import PATH_PLACEHOLDERS
 # noinspection PyProtectedMember
 from ae.core import (
-    APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE, MAX_NUM_LOG_FILES,
-    LOG_FILE_IDX_WIDTH,
+    APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE,
+    LOG_FILE_IDX_WIDTH, MAX_NUM_LOG_FILES,
     activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
     registered_app_names,
     AppBase, _PrintingReplicator)
+import ae.paths     # for patch tests of ae.paths.PATH_PLACEHOLDERS
+import ae.core      # for patch tests of ae.core.PATH_PLACEHOLDERS
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
@@ -352,7 +356,7 @@ class TestPythonLogging:
         assert cae.py_log_params == var_val
         logging.shutdown()
 
-    def test_logging_params_dict_complex(self, restore_app_env, sys_argv_app_key_restore):
+    def test_logging_params_dict_complex(self, restore_app_env):
         """ test logging with rotating file handler, first refactored migrated from
 
         TODO: investigate and fix the 4 commented out asserts in this test method
@@ -382,7 +386,7 @@ class TestPythonLogging:
                                               'backupCount': 63}),
                        loggers={'root': dict(handlers=['console']),
                                 'ae': dict(handlers=['console']),
-                                'ae.console': dict(handlers=['console'])}
+                                'ae.core': dict(handlers=['console'])}
                        )
         print(str(var_val))
 
@@ -393,7 +397,7 @@ class TestPythonLogging:
 
         root_logger = logging.getLogger()   # 'root'
         ae_logger = logging.getLogger('ae')
-        ae_cae_logger = logging.getLogger('ae.console')
+        ae_cae_logger = logging.getLogger('ae.core')
 
         # ConsoleApp print_out
         try:
@@ -505,7 +509,7 @@ class TestPythonLogging:
 
 
 class TestAppBase:      # only some basic tests - test coverage is done by :class:`~.console.ConsoleApp` tests
-    def test_app_name(self, restore_app_env, sys_argv_app_key_restore):
+    def test_app_name(self, restore_app_env):
         name = 'tan_app_name'
         sys.argv = [name, ]
         app = AppBase()
@@ -592,6 +596,27 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             raise ValueError
         setattr(app, 'test_raiser', _raising_ex)
         app.call_method('test_raiser')
+
+    def test_init_path_placeholders(self, restore_app_env):
+        cae = AppBase("test_init_path_placeholders")
+
+        assert PATH_PLACEHOLDERS is ae.core.PATH_PLACEHOLDERS
+        assert PATH_PLACEHOLDERS is ae.paths.PATH_PLACEHOLDERS
+
+        ori_path_placeholders = ae.paths.PATH_PLACEHOLDERS
+        tst_path_placeholders = ori_path_placeholders.copy()
+        with patch('ae.paths.PATH_PLACEHOLDERS', tst_path_placeholders):
+            assert cae.app_name == 'pyTstConsAppKey'
+            assert ae.core.PATH_PLACEHOLDERS['app_name'] == 'pyTstConsAppKey'
+            assert ae.core.PATH_PLACEHOLDERS['main_app_name'] == 'pyTstConsAppKey'
+
+            new_app_name = 'some_new_app_name'
+            cae.app_name = new_app_name
+            cae._init_path_placeholders()
+            assert ae.core.PATH_PLACEHOLDERS['app_name'] == new_app_name
+            assert ae.core.PATH_PLACEHOLDERS['main_app_name'] == new_app_name
+
+            cae.app_name = 'pyTstConsAppKey'
 
     def test_log_line_prefix(self, restore_app_env):
         app = AppBase(sys_env_id='Tee sst')
