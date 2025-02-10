@@ -216,6 +216,7 @@ import faulthandler
 import logging
 import logging.config
 import os
+import shutil
 import sys
 import threading
 import traceback
@@ -227,13 +228,13 @@ from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, ca
 from ae.base import (                                                                                   # type: ignore
     BUILD_CONFIG_FILE, DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
     build_config_variable_values, dummy_function, force_encoding, norm_path,
-    os_path_basename, os_path_splitext, os_platform, os_path_dirname, os_path_isdir, os_path_isfile,
-    stack_var, to_ascii, write_file)
-from ae.paths import app_name_guess                                                                     # type: ignore
+    os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext, os_platform,
+    read_file, stack_var, to_ascii, write_file)
+from ae.paths import PATH_PLACEHOLDERS, app_data_path, app_docs_path, app_name_guess, normalize         # type: ignore
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.64'
+__version__ = '0.3.65'
 
 
 # check/install early (on import of this module) for first-app-run-installations or new/outstanding app-version updates
@@ -718,6 +719,8 @@ class AppBase:
             app_title = doc_str.strip().split('\n')[0] if doc_str else ""
         self.app_title: str = app_title                                         #: title of this app instance
         self.app_name: str = app_name or app_name_guess()                       #: name of this app instance
+        if self.is_main:
+            self._init_path_placeholders()
         self.app_version: str = app_version or stack_var('__version__') or ""   #: version of this app instance
         self._debug_level: int = debug_level                                    #: debug level of this app instance
         self.sys_env_id: str = sys_env_id                                       #: system environment id of this app
@@ -730,6 +733,48 @@ class AppBase:
 
         _register_app_thread()
         _register_app_instance(self)
+
+    def _init_path_placeholders(self):
+        """ correct app_name/main_app_name, the related path placeholders and ensure write access for some ot them. """
+        # correct app name guess, init by :mod:`ae.paths` (main app from ("", 'pyTstConsAppKey', '_jb_pytest_runner'))
+        PATH_PLACEHOLDERS['main_app_name'] = PATH_PLACEHOLDERS['app_name'] = app_name = self.app_name
+        PATH_PLACEHOLDERS['app'] = app_data_path()
+        PATH_PLACEHOLDERS['ado'] = app_docs_path()
+
+        # check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}; to be
+        # corrected/redirected to sub-folder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
+        # version>12 / API-level>33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help)
+        name = 'write_access_check__name'
+        file_content = "check right file content"
+        for placeholder in [_ for _ in ('ado', 'doc', 'documents', 'downloads') if _ in PATH_PLACEHOLDERS]:
+            chk_path = os_path_join(normalize("{" + placeholder + "}"), name)
+            err_msg = f"{placeholder=} {chk_path=}"
+            access = False
+            try:
+                chk_file = os_path_join(chk_path, f"{name}.txt")
+                write_file(chk_file, file_content, make_dirs=True)
+                assert (access := read_file(chk_file) == file_content)
+            except (AssertionError, PermissionError, Exception) as chk_ex:                  # pragma: no cover
+                err_msg += f": {chk_ex=}"
+                for alternative in [_ for _ in ('videos', 'pictures', 'usr') if _ in PATH_PLACEHOLDERS]:
+                    alt_path = os_path_join(normalize("{" + alternative + "}"), app_name + "_" + placeholder)
+                    alt_file = os_path_join(alt_path, f"{name}.txt")
+                    try:
+                        write_file(alt_file, file_content, make_dirs=True)
+                        assert (access := read_file(alt_file) == file_content)
+                    except (AssertionError, PermissionError, Exception) as alt_ex:
+                        err_msg += f"; {alternative=} access error {alt_ex=} for {alt_file=}"
+                    finally:
+                        if os_path_isfile(alt_file):
+                            os.remove(alt_file)         # leave just created alt_path folder in place
+                    if access:
+                        PATH_PLACEHOLDERS[placeholder] = alt_path
+                        self.vpo(f"redirected write protected path {placeholder=} to {alt_path=}")
+                        break
+            finally:
+                shutil.rmtree(chk_path, ignore_errors=True)
+            if not access:                                                                  # pragma: no cover
+                self.po(f"ConsoleApp._init_path_placeholder ignored errors: {err_msg}")
 
     def __del__(self):
         """ deallocate this app instance by calling :func:`AppBase.shutdown`.
@@ -922,7 +967,7 @@ class AppBase:
 
         this method has an alias named :meth:`.po`
         """
-        if file is None and not self.is_main:
+        if file is None and main_app_instance() is not self:    # self.is_main==True when main_app_instance() is None
             with log_file_lock:
                 file = self._log_buf_stream or self._log_file_stream
         if file:
@@ -982,7 +1027,7 @@ class AppBase:
         if self._shut_down:
             return
         aqc_kwargs: Dict[str, Any] = dict(blocking=False) if timeout is None else dict(timeout=timeout)
-        is_main_app_instance = self.is_main
+        is_main_app_instance = main_app_instance() is self      # self.is_main==True when main_app_instance() is None
         force = is_main_app_instance and exit_code      # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
@@ -1027,9 +1072,9 @@ class AppBase:
 
         :param redirect:        pass ``True`` to enable or ``False`` to disable the redirection.
         """
-        is_main_app_instance = self.is_main
+        is_main_app_instance = main_app_instance() is self          # is_main is True when main_app_instance() is None
         if redirect:
-            if not isinstance(sys.stdout, _PrintingReplicator):  # sys.stdout==ori_std_out not works with pytest/capsys
+            if not isinstance(sys.stdout, _PrintingReplicator):     # sys.stdout==ori_std_out fails on pytest/capsys
                 if not self.suppress_stdout:
                     std_out = ori_std_out
                 elif self._nul_std_out and not self._nul_std_out.closed:
