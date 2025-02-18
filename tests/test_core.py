@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from conftest import delete_files
 
-from ae.base import DATE_TIME_ISO, force_encoding, read_file, write_file
+from ae.base import DATE_TIME_ISO, force_encoding, norm_path, read_file, write_file
 from ae.paths import PATH_PLACEHOLDERS
 # noinspection PyProtectedMember
 from ae.core import (
@@ -528,7 +528,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         app = AppBase(title, app_version=ver)
         assert app.app_title == title
         assert app.app_version == ver
-        assert app.app_path == os.path.dirname(sys.argv[0])
+        assert app.app_path == norm_path(os.path.dirname(sys.argv[0]))
 
     def test_app_find_version(self, restore_app_env):
         app = AppBase()

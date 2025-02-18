@@ -234,11 +234,7 @@ from ae.paths import PATH_PLACEHOLDERS, app_data_path, app_docs_path, app_name_g
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.65'
-
-
-# check/install early (on import of this module) for first-app-run-installations or new/outstanding app-version updates
-check_all()
+__version__ = '0.3.66'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -712,18 +708,21 @@ class AppBase:
         app_path = sys.argv[0]
         if not os_path_isdir(app_path):                                 # if it is a console app module (not a package)
             app_path = os_path_dirname(app_path)                        # .. then remove the module file name
-        self.app_path: str = app_path                                   #: path to folder of your main app code file
+        self.app_path: str = norm_path(app_path)                        #: path to folder of your main app code file
 
         if not app_title:
             doc_str = stack_var('__doc__')
             app_title = doc_str.strip().split('\n')[0] if doc_str else ""
         self.app_title: str = app_title                                         #: title of this app instance
         self.app_name: str = app_name or app_name_guess()                       #: name of this app instance
-        if self.is_main:
-            self._init_path_placeholders()
         self.app_version: str = app_version or stack_var('__version__') or ""   #: version of this app instance
         self._debug_level: int = debug_level                                    #: debug level of this app instance
         self.sys_env_id: str = sys_env_id                                       #: system environment id of this app
+
+        if self.is_main:                            # if this instance is the main/first app instance
+            self._init_path_placeholders()          # then init PATH_PLACEHOLDERS
+            if app_path == norm_path(os.getcwd()):  # and if this app is not a dev-tool/grm
+                check_all()                         # then install/update app on first-run after installation/ubgrade
 
         if multi_threading:
             activate_multi_threading()
