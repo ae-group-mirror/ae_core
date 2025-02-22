@@ -192,20 +192,27 @@ will automatically disable the ae log file of this instance.
 application debugging
 ---------------------
 
-to use the debug features of :mod:`~.core` you simply have to import the needed
-:ref:`debug level constant <debug-level-constants>` to pass it at instantiation of your :class:`AppBase` class
-to the :paramref:`~AppBase.debug_level` argument::
+the debug features of the :mod:`~.core` portion providing additional run-time infos as console and/or log file output.
+the default debug level is set to  :data:`verbose debug output <DEBUG_LEVEL_VERBOSE>`. to change it at run-time first
+import the respective :ref:`debug level constant <debug-level-constants>`.
+
+to set the initial debug level to less verbose output you could specify at instantiation of your :class:`AppBase` class
+the :data:`DEBUG_LEVEL_ENABLED` constant onto the :paramref:`~AppBase.debug_level` argument::
 
     app = AppBase(..., debug_level= :data:`DEBUG_LEVEL_ENABLED`)
 
-by passing :data:`DEBUG_LEVEL_ENABLED` the print-outs (and log file contents) will be more detailed, and even more
-verbose if you use instead the debug level :data:`DEBUG_LEVEL_VERBOSE`.
+by passing :data:`DEBUG_LEVEL_DISABLED` constant all debug print-outs will be disabled.
 
-the debug level can be changed at any time in your application code by directly assigning the new debug level to the
-:attr:`~AppBase.debug_level` property. if you prefer to change the debug levels dynamically, then use the
-:class:`~.console.ConsoleApp` instead of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides this property
-as a :ref:`configuration file variable <config-variables>` and :ref:`commend line option <config-options>`. this way you
-can specify :ref:`the actual debug level <pre-defined-config-options>` without the need to change (and re-build) your
+alternatively you can set or change the :attr:`~AppBase.debug_level` property at run-time after the instantiation
+of the app instance. to disable debug output use :data:`DEBUG_LEVEL_DISABLED` constant::
+
+    app.debug_level = DEBUG_LEVEL_DISABLED
+
+to change the debug levels dynamically and keep its last value persistent until the next app start, use the app class
+:class:`~.console.ConsoleApp` instead of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides the
+debug level property as a :ref:`configuration file variable <config-variables>` and
+as a :ref:`commend line option <config-options>`. this way you can specify
+:ref:`the actual debug level <pre-defined-config-options>` without the need to change (and re-build) your
 application code.
 
 .. _debug-level-constants:
@@ -234,7 +241,7 @@ from ae.paths import PATH_PLACEHOLDERS, app_data_path, app_docs_path, app_name_g
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.66'
+__version__ = '0.3.67'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -686,7 +693,7 @@ class AppBase:
     _shut_down: bool = False                        #: True if this app instance got shut down already
 
     def __init__(self, app_title: str = '', app_name: str = '', app_version: str = '', sys_env_id: str = '',
-                 debug_level: int = DEBUG_LEVEL_DISABLED, multi_threading: bool = False, suppress_stdout: bool = False):
+                 debug_level: int = DEBUG_LEVEL_VERBOSE, multi_threading: bool = False, suppress_stdout: bool = False):
         """ initialize a new :class:`AppBase` instance.
 
         :param app_title:       application title/description setting the attribute :attr:`~ae.core.AppBase.app_title`.
@@ -719,11 +726,6 @@ class AppBase:
         self._debug_level: int = debug_level                                    #: debug level of this app instance
         self.sys_env_id: str = sys_env_id                                       #: system environment id of this app
 
-        if self.is_main:                            # if this instance is the main/first app instance
-            self._init_path_placeholders()          # then init PATH_PLACEHOLDERS
-            if app_path == norm_path(os.getcwd()):  # and if this app is not a dev-tool/grm
-                check_all()                         # then install/update app on first-run after installation/ubgrade
-
         if multi_threading:
             activate_multi_threading()
 
@@ -732,6 +734,13 @@ class AppBase:
 
         _register_app_thread()
         _register_app_instance(self)
+
+        if self.is_main:                            # if this instance is the main/first app instance
+            self._init_path_placeholders()          # .. then init PATH_PLACEHOLDERS
+            if app_path == norm_path(os.getcwd()):  # and if this app is not a dev-tool/grm # pragma: no cover
+                destination_files = check_all()     # .. then install/update app on first-run after installation/ubgrade
+                if destination_files:
+                    self.vpo(f"AppBase.__init__() updated {len(destination_files)} {destination_files=}")
 
     def _init_path_placeholders(self):
         """ correct app_name/main_app_name, the related path placeholders and ensure write access for some ot them. """
@@ -743,15 +752,16 @@ class AppBase:
         # check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}; to be
         # corrected/redirected to sub-folder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
         # version>12 / API-level>33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help)
-        name = 'write_access_check__name'
         file_content = "check right file content"
         for placeholder in [_ for _ in ('ado', 'doc', 'documents', 'downloads') if _ in PATH_PLACEHOLDERS]:
-            chk_path = os_path_join(normalize("{" + placeholder + "}"), name)
-            err_msg = f"{placeholder=} {chk_path=}"
+            name = f'check_write_access_on_{placeholder}'
+            chk_path = os_path_join(normalize("{" + placeholder + "}"), f"{name}_dir")
+            err_msg = f"{chk_path=}"
             access = False
             try:
-                chk_file = os_path_join(chk_path, f"{name}.txt")
+                chk_file = os_path_join(chk_path, f"{name}_file.txt")
                 write_file(chk_file, file_content, make_dirs=True)
+                assert os_path_isfile(chk_file)
                 assert (access := read_file(chk_file) == file_content)
             except (AssertionError, PermissionError, Exception) as chk_ex:                  # pragma: no cover
                 err_msg += f": {chk_ex=}"
@@ -760,6 +770,7 @@ class AppBase:
                     alt_file = os_path_join(alt_path, f"{name}.txt")
                     try:
                         write_file(alt_file, file_content, make_dirs=True)
+                        assert os_path_isfile(alt_file)
                         assert (access := read_file(alt_file) == file_content)
                     except (AssertionError, PermissionError, Exception) as alt_ex:
                         err_msg += f"; {alternative=} access error {alt_ex=} for {alt_file=}"
@@ -768,12 +779,12 @@ class AppBase:
                             os.remove(alt_file)         # leave just created alt_path folder in place
                     if access:
                         PATH_PLACEHOLDERS[placeholder] = alt_path
-                        self.vpo(f"redirected write protected path {placeholder=} to {alt_path=}")
+                        self.vpo(f"redirected path {placeholder=} from write protected {chk_path=} to {alt_path=}")
                         break
             finally:
                 shutil.rmtree(chk_path, ignore_errors=True)
             if not access:                                                                  # pragma: no cover
-                self.po(f"ConsoleApp._init_path_placeholder ignored errors: {err_msg}")
+                self.po(f"ConsoleApp._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
 
     def __del__(self):
         """ deallocate this app instance by calling :func:`AppBase.shutdown`.
