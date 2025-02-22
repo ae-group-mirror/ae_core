@@ -131,10 +131,8 @@ class TestPrintingReplicator:
             dso.write(msg)
             lfo.close()
             with open(lfn) as f:
-                if f.encoding == 'ascii':
-                    assert f.read() == '\\ua000\\u07b4'
-                else:
-                    assert f.read() == msg      # msg == '\ua000\u07b4'
+                assert f.encoding == 'UTF-8'
+                assert f.read() == msg              # == '\ua000\u07b4'
 
         finally:
             assert delete_files(lfn) == 1
@@ -390,7 +388,7 @@ class TestPythonLogging:
                        )
         print(str(var_val))
 
-        cae = AppBase('test_python_logging_params_dict_file')
+        cae = AppBase('test_python_logging_params_dict_file', debug_level=DEBUG_LEVEL_DISABLED)
         cae.init_logging(py_logging_params=var_val)
 
         assert cae.py_log_params == var_val
@@ -405,7 +403,9 @@ class TestPythonLogging:
             cae.po(log_text)
         finally:
             logging.shutdown()
-            assert delete_files(log_file, ret_type='contents')[0] == ""
+            files_contents = delete_files(log_file, ret_type='contents')
+            assert len(files_contents) >= 1
+            assert files_contents[0] == ""
 
         try:
             log_text = entry_prefix + "0 print_out root"
