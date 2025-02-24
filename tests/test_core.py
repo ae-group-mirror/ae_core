@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import pytest
+import shutil
 import sys
 import threading
 
@@ -12,7 +13,7 @@ from unittest.mock import patch
 from conftest import delete_files
 
 from ae.base import DATE_TIME_ISO, force_encoding, norm_path, read_file, write_file
-from ae.paths import PATH_PLACEHOLDERS
+from ae.paths import PATH_PLACEHOLDERS, placeholder_path, coll_folders, Collector
 # noinspection PyProtectedMember
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE,
@@ -223,6 +224,27 @@ class TestAeLogging:
             assert len(contents)
             assert tst_out in contents[0]
 
+    def test_open_log_file_with_suppressed_stdout_reopen(self, capsys, restore_app_env):
+        log_file = 'test_ae_no_stdout.log'
+        tst_out = 'only printed to log file'
+        try:
+            app = AppBase('test_open_log_file_with_suppressed_stdout', suppress_stdout=True)
+            app._nul_std_out.close()
+
+            assert app.suppress_stdout is True
+            app.init_logging(log_file_name=log_file)
+            app.po(tst_out)
+            out, err = capsys.readouterr()
+            assert out == "" and err == ""
+            app.init_logging()      # close log file
+            assert os.path.exists(log_file)
+            out, err = capsys.readouterr()
+            assert out == "" and err == ""
+        finally:
+            contents = delete_files(log_file, ret_type='contents')
+            assert len(contents)
+            assert tst_out in contents[0]
+
     def test_invalid_log_file_name(self, restore_app_env):
         log_file = ':/:invalid:/:'
         app = AppBase('test_invalid_log_file_name')
@@ -295,7 +317,7 @@ class TestAeLogging:
             sub_thread = threading.Thread(target=sub_app_po)
             sub_thread.start()
             while not sub_printed:      # NOT ENOUGH fails on gitlab CI: not sub or not sub.active_log_stream:
-                pass                    # wait until sub-thread has called init_logging()
+                pass                    # wait until sub-thread has called init_logging()  # pragma: no cover
             print_out(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")
             sub.init_logging()          # close sub-app log file created by sub_thread
@@ -369,7 +391,6 @@ class TestPythonLogging:
         * https://stackoverflow.com/questions/59875983
         * https://github.com/pytest-dev/pytest/issues/3697
         * https://youtrack.jetbrains.com/issue/PY-48743/Running-Pytest-is-not-showing-logging-output
-
 
         """
         log_file = 'test_py_log_complex.log'
@@ -516,8 +537,10 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert app.app_name == name
 
     def test_app_key(self, restore_app_env):
-        app = AppBase(app_name='XXX', sys_env_id='YYY')
-        assert app.app_key == 'XXX@YYY'
+        app_name = 'TstAppName'
+        env_id = 'TstEnvId'
+        app = AppBase(app_name=app_name, sys_env_id=env_id)
+        assert app.app_key == app_name + '@' + env_id
 
     def test_app_instances_reset1(self):
         assert main_app_instance() is None
@@ -603,9 +626,8 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert PATH_PLACEHOLDERS is ae.core.PATH_PLACEHOLDERS
         assert PATH_PLACEHOLDERS is ae.paths.PATH_PLACEHOLDERS
 
-        ori_path_placeholders = ae.paths.PATH_PLACEHOLDERS
-        tst_path_placeholders = ori_path_placeholders.copy()
-        with patch('ae.paths.PATH_PLACEHOLDERS', tst_path_placeholders):
+        tst_path_placeholders = ae.paths.PATH_PLACEHOLDERS.copy()
+        with patch('ae.core.PATH_PLACEHOLDERS', tst_path_placeholders):
             assert cae.app_name == 'pyTstConsAppKey'
             assert ae.core.PATH_PLACEHOLDERS['app_name'] == 'pyTstConsAppKey'
             assert ae.core.PATH_PLACEHOLDERS['main_app_name'] == 'pyTstConsAppKey'
@@ -615,8 +637,73 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             cae._init_path_placeholders()
             assert ae.core.PATH_PLACEHOLDERS['app_name'] == new_app_name
             assert ae.core.PATH_PLACEHOLDERS['main_app_name'] == new_app_name
-
             cae.app_name = 'pyTstConsAppKey'
+
+    def test_init_path_placeholders_read_err(self, restore_app_env):
+        cae = AppBase("test_init_path_placeholders_read_err")
+        usr_path = ae.core.PATH_PLACEHOLDERS['usr']
+        old_phs = ae.core.PATH_PLACEHOLDERS.copy()
+
+        with patch('ae.core.read_file', lambda *_args, **_kwargs: ""):
+            cae._init_path_placeholders()
+        assert ae.core.PATH_PLACEHOLDERS == old_phs
+        assert ae.paths.PATH_PLACEHOLDERS == old_phs
+
+        def _raise_err(file_path: str, *_args, **_kwargs):
+            if placeholder_path(file_path).startswith('{usr}'):
+                return read_file(file_path, *_args, **_kwargs)
+            else:
+                raise Exception("TstInitPathPlaceHoldersWriteErr")
+
+        with (patch('ae.core.read_file', _raise_err)):
+            tst_path_placeholders = ae.core.PATH_PLACEHOLDERS.copy()
+            with patch('ae.core.PATH_PLACEHOLDERS', tst_path_placeholders):
+                assert not ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)
+                assert not placeholder_path(ae.core.PATH_PLACEHOLDERS['ado']).startswith("{usr}")
+                try:
+                    cae._init_path_placeholders()
+                finally:
+                    for re_dir in Collector(item_collector=coll_folders
+                                            ).collect(usr_path, select=cae.app_name + "*", only_first_of=()).paths:
+                        shutil.rmtree(re_dir)
+                assert ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)
+                assert placeholder_path(ae.core.PATH_PLACEHOLDERS['ado']).startswith("{usr}")
+                assert ae.core.PATH_PLACEHOLDERS != old_phs
+
+            assert ae.core.PATH_PLACEHOLDERS == old_phs
+
+    def test_init_path_placeholders_write_err(self, restore_app_env):
+        cae = AppBase("test_init_path_placeholders_write_err")
+        usr_path = ae.core.PATH_PLACEHOLDERS['usr']
+        old_phs = ae.core.PATH_PLACEHOLDERS.copy()
+
+        with patch('ae.core.write_file', lambda *_args, **_kwargs: None):
+            cae._init_path_placeholders()
+        assert ae.core.PATH_PLACEHOLDERS == old_phs
+        assert ae.paths.PATH_PLACEHOLDERS == old_phs
+
+        def _raise_write_err(file_path: str, *_args, **_kwargs):
+            if placeholder_path(file_path).startswith('{usr}'):
+                write_file(file_path, *_args, **_kwargs)
+            else:
+                raise Exception("TstInitPathPlaceHoldersWriteErr")
+
+        with patch('ae.core.write_file', _raise_write_err):
+            tst_path_placeholders = ae.core.PATH_PLACEHOLDERS.copy()
+            with patch('ae.core.PATH_PLACEHOLDERS', tst_path_placeholders):
+                assert not ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)
+                assert not placeholder_path(ae.core.PATH_PLACEHOLDERS['ado']).startswith("{usr}")
+                try:
+                    cae._init_path_placeholders()
+                finally:
+                    for re_dir in Collector(item_collector=coll_folders
+                                            ).collect(usr_path, select=cae.app_name + "*", only_first_of=()).paths:
+                        shutil.rmtree(re_dir)
+                assert ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)
+                assert placeholder_path(ae.core.PATH_PLACEHOLDERS['ado']).startswith("{usr}")
+                assert ae.core.PATH_PLACEHOLDERS != old_phs
+
+            assert ae.core.PATH_PLACEHOLDERS == old_phs
 
     def test_log_line_prefix(self, restore_app_env):
         app = AppBase(sys_env_id='Tee sst')
