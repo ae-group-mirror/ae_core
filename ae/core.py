@@ -237,11 +237,12 @@ from ae.base import (                                                           
     build_config_variable_values, dummy_function, force_encoding, norm_path,
     os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext, os_platform,
     read_file, stack_var, to_ascii, write_file)
-from ae.paths import PATH_PLACEHOLDERS, app_data_path, app_docs_path, app_name_guess, normalize         # type: ignore
+from ae.paths import (                                                                                  # type: ignore
+    PATH_PLACEHOLDERS, add_common_storage_paths, app_data_path, app_docs_path, app_name_guess, normalize)
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.67'
+__version__ = '0.3.68'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -715,7 +716,7 @@ class AppBase:
         app_path = sys.argv[0]
         if not os_path_isdir(app_path):                                 # if it is a console app module (not a package)
             app_path = os_path_dirname(app_path)                        # .. then remove the module file name
-        self.app_path: str = norm_path(app_path)                        #: path to folder of your main app code file
+        self.app_path: str = norm_path(app_path)             #: path to folder of your main app code file
 
         if not app_title:
             doc_str = stack_var('__doc__')
@@ -735,12 +736,15 @@ class AppBase:
         _register_app_thread()
         _register_app_instance(self)
 
-        if self.is_main:                            # if this instance is the main/first app instance
-            self._init_path_placeholders()          # .. then init PATH_PLACEHOLDERS
-            if app_path == norm_path(os.getcwd()):  # and if this app is not a dev-tool/grm # pragma: no cover
-                destination_files = check_all()     # .. then install/update app on first-run after installation/ubgrade
-                if destination_files:
-                    self.vpo(f"AppBase.__init__() updated {len(destination_files)} {destination_files=}")
+        if self.is_main:                                        # if this instance is the main/first app instance
+            self._init_path_placeholders()                      # .. then init PATH_PLACEHOLDERS
+
+            app_path, cwd_path = norm_path(app_path), norm_path(os.getcwd())
+            if app_path == cwd_path:                            # if this app is not a dev-tool/grm   # pragma: no cover
+                destination_files = check_all()                 # .. then prepare app on first-run after install/ubgrade
+                self.vpo(f"AppBase.__init__() updated {len(destination_files)} {destination_files=}")
+            else:                                                                           # pragma: no cover
+                self.vpo(f"AppBase.__init__() upgrade check skipped because {app_path=} != {cwd_path=}")
 
     def _init_path_placeholders(self):
         """ correct app_name/main_app_name, the related path placeholders and ensure write access for some ot them. """
@@ -749,13 +753,22 @@ class AppBase:
         PATH_PLACEHOLDERS['app'] = app_data_path()
         PATH_PLACEHOLDERS['ado'] = app_docs_path()
 
+        add_common_storage_paths()  # determine platform specific path placeholders, like e.g. {pictures}, {documents}..
+
+        # to unmask in :meth:`ae.core.AppBase.__init__`/:meth:`ae.updater.check_all` the masked .apk extension of the
+        # APK, embedded via grm-build_gui_app action, because buildozer/p4a does not embed it having an .apk extension
+        if os_platform == 'android':    # only needed for APKs on Android OS; not needed for AAR app packages
+            PATH_PLACEHOLDERS['apk_ext'] = 'apk'                                            # pragma: no cover
+
         # check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}; to be
         # corrected/redirected to sub-folder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
         # version>12 / API-level>33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help)
         file_content = "check right file content"
         for placeholder in [_ for _ in ('ado', 'doc', 'documents', 'downloads') if _ in PATH_PLACEHOLDERS]:
             name = f'check_write_access_on_{placeholder}'
-            chk_path = os_path_join(normalize("{" + placeholder + "}"), f"{name}_dir")
+            cph_path = normalize('{' + placeholder + '}')
+            cph_exists = os_path_isdir(cph_path)
+            chk_path = os_path_join(cph_path, f"{name}_dir")
             err_msg = f"{chk_path=}"
             access = False
             try:
@@ -763,11 +776,14 @@ class AppBase:
                 write_file(chk_file, file_content, make_dirs=True)
                 assert os_path_isfile(chk_file)
                 assert (access := read_file(chk_file) == file_content)
-            except (AssertionError, PermissionError, Exception) as chk_ex:                  # pragma: no cover
-                err_msg += f": {chk_ex=}"
-                for alternative in [_ for _ in ('videos', 'pictures', 'usr') if _ in PATH_PLACEHOLDERS]:
-                    alt_path = os_path_join(normalize("{" + alternative + "}"), app_name + "_" + placeholder)
-                    alt_file = os_path_join(alt_path, f"{name}.txt")
+            except (AssertionError, PermissionError, Exception) as chk_ex:
+                err_msg += f": {chk_ex=!r}"
+                for alternative in [_ for _ in ('documents', 'videos', 'pictures', 'usr')
+                                    if _ != placeholder and _ in PATH_PLACEHOLDERS]:
+                    aph_path = normalize('{' + alternative + '}')
+                    aph_exists = os_path_isdir(aph_path)
+                    alt_path = os_path_join(aph_path, app_name + "_" + placeholder)
+                    alt_file = os_path_join(alt_path, f"{name}_fil.txt")
                     try:
                         write_file(alt_file, file_content, make_dirs=True)
                         assert os_path_isfile(alt_file)
@@ -775,15 +791,17 @@ class AppBase:
                     except (AssertionError, PermissionError, Exception) as alt_ex:
                         err_msg += f"; {alternative=} access error {alt_ex=} for {alt_file=}"
                     finally:
-                        if os_path_isfile(alt_file):
+                        if access and os_path_isfile(alt_file):
                             os.remove(alt_file)         # leave just created alt_path folder in place
+                        else:
+                            shutil.rmtree(alt_path if aph_exists else aph_path, ignore_errors=True)
                     if access:
                         PATH_PLACEHOLDERS[placeholder] = alt_path
                         self.vpo(f"redirected path {placeholder=} from write protected {chk_path=} to {alt_path=}")
                         break
             finally:
-                shutil.rmtree(chk_path, ignore_errors=True)
-            if not access:                                                                  # pragma: no cover
+                shutil.rmtree(chk_path if cph_exists else cph_path, ignore_errors=True)
+            if not access:
                 self.po(f"ConsoleApp._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
 
     def __del__(self):
@@ -1088,7 +1106,7 @@ class AppBase:
                 if not self.suppress_stdout:
                     std_out = ori_std_out
                 elif self._nul_std_out and not self._nul_std_out.closed:
-                    std_out = self._nul_std_out     # pragma: no cover - should never happen
+                    std_out = self._nul_std_out
                 else:
                     std_out = self._nul_std_out = open(os.devnull, 'w')
                 sys.stdout = cast(TextIO, _PrintingReplicator(sys_out_obj=std_out))
