@@ -232,9 +232,9 @@ import weakref
 from io import StringIO
 from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
 
-from ae.base import (                                                                                   # type: ignore
+from ae.base import (  # type: ignore
     BUILD_CONFIG_FILE, DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
-    build_config_variable_values, dummy_function, force_encoding, norm_path,
+    build_config_variable_values, defuse, dummy_function, force_encoding, norm_path,
     os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext, os_platform,
     read_file, stack_var, to_ascii, write_file)
 from ae.paths import (                                                                                  # type: ignore
@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.68'
+__version__ = '0.3.69'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -769,10 +769,10 @@ class AppBase:
             cph_path = normalize('{' + placeholder + '}')
             cph_exists = os_path_isdir(cph_path)
             chk_path = os_path_join(cph_path, f"{name}_dir")
+            chk_file = os_path_join(chk_path, f"{name}_file_{defuse('svc://chk_usr:chk_pw@chk_host/chk_path')}")
             err_msg = f"{chk_path=}"
             access = False
             try:
-                chk_file = os_path_join(chk_path, f"{name}_file.txt")
                 write_file(chk_file, file_content, make_dirs=True)
                 assert os_path_isfile(chk_file)
                 assert (access := read_file(chk_file) == file_content)
@@ -783,7 +783,7 @@ class AppBase:
                     aph_path = normalize('{' + alternative + '}')
                     aph_exists = os_path_isdir(aph_path)
                     alt_path = os_path_join(aph_path, app_name + "_" + placeholder)
-                    alt_file = os_path_join(alt_path, f"{name}_fil.txt")
+                    alt_file = os_path_join(alt_path, f"{name}_file_{defuse('svc://chk_usr:chk_pw@chk_host/chk_path')}")
                     try:
                         write_file(alt_file, file_content, make_dirs=True)
                         assert os_path_isfile(alt_file)
