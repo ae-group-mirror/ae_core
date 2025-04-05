@@ -418,7 +418,7 @@ class TestPythonLogging:
         ae_logger = logging.getLogger('ae')
         ae_cae_logger = logging.getLogger('ae.core')
 
-        # ConsoleApp print_out
+        # AppBase print_out/.po
         try:
             log_text = entry_prefix + "0 print_out"
             cae.po(log_text)
@@ -509,7 +509,7 @@ class TestPythonLogging:
             logging.shutdown()
             assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
-        # ConsoleAppEnv dpo
+        # AppBase.debug_out/.dpo
         sys.argv = ['tl_cdc']  # sys.argv has to be set to allow get_option('debug_level') calls done by debug_out()
         try:
             log_text = entry_prefix + "5 not logged dpo"
@@ -529,7 +529,7 @@ class TestPythonLogging:
         assert main_app_instance() is None
 
 
-class TestAppBase:      # only some basic tests - test coverage is done by :class:`~.console.ConsoleApp` tests
+class TestAppBase:      # only some basic tests - test coverage is done by :class:`~ae.console.ConsoleApp` tests
     def test_app_name(self, restore_app_env):
         name = 'tan_app_name'
         sys.argv = [name, ]

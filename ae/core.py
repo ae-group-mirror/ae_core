@@ -209,7 +209,7 @@ of the app instance. to disable debug output use :data:`DEBUG_LEVEL_DISABLED` co
     app.debug_level = DEBUG_LEVEL_DISABLED
 
 to change the debug levels dynamically and keep its last value persistent until the next app start, use the app class
-:class:`~.console.ConsoleApp` instead of :class:`AppBase`, because :class:`~.console.ConsoleApp` provides the
+:class:`~ae.console.ConsoleApp` instead of :class:`AppBase`, because :class:`~ae.console.ConsoleApp` provides the
 debug level property as a :ref:`configuration file variable <config-variables>` and
 as a :ref:`commend line option <config-options>`. this way you can specify
 :ref:`the actual debug level <pre-defined-config-options>` without the need to change (and re-build) your
@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.69'
+__version__ = '0.3.70'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -516,7 +516,7 @@ def _register_app_instance(app: 'AppBase'):
     :param app:                 :class:`AppBase` instance to register
     """
     with app_inst_lock:
-        global _APP_INSTANCES, _MAIN_APP_INST_KEY
+        global _MAIN_APP_INST_KEY
         msg = f"register_app_instance({app}) expects "
         assert app not in _APP_INSTANCES.values(), msg + "new instance - this app got already registered"
 
@@ -540,7 +540,7 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
     :return:                    removed :class:`AppBase` instance.
     """
     with app_inst_lock:
-        global _APP_INSTANCES, _MAIN_APP_INST_KEY
+        global _MAIN_APP_INST_KEY
         app = _APP_INSTANCES.pop(app_key, None)
         cnt = len(_APP_INSTANCES)
         if app_key == _MAIN_APP_INST_KEY:
@@ -622,7 +622,6 @@ the joining of unit testing threads in the test teardown (resetting app environm
 
 def _register_app_thread():
     """ add new app thread to _APP_THREADS if not already added. """
-    global _APP_THREADS
     tid = threading.get_ident()
     if tid not in _APP_THREADS:
         _APP_THREADS[tid] = threading.current_thread()
@@ -635,7 +634,6 @@ def _join_app_threads(timeout: Optional[float] = None):
 
     .. note:: this function has to be called by the main app instance only.
     """
-    global _APP_THREADS
     main_thread = threading.current_thread()
     for app_thread in reversed(list(_APP_THREADS.values())):    # threading.enumerate() includes PyCharm/pytest threads
         if app_thread is not main_thread:
@@ -802,7 +800,7 @@ class AppBase:
             finally:
                 shutil.rmtree(chk_path if cph_exists else cph_path, ignore_errors=True)
             if not access:
-                self.po(f"ConsoleApp._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
+                self.po(f"AppBase._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
 
     def __del__(self):
         """ deallocate this app instance by calling :func:`AppBase.shutdown`.
