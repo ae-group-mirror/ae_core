@@ -1,4 +1,4 @@
-""" test doc string for AppBase.app_title tests. """
+""" unit and integration tests of the ae.core portion. """
 import datetime
 import logging
 import os
@@ -7,10 +7,10 @@ import shutil
 import sys
 import threading
 
-from typing import cast, Any
+from conftest import delete_files
+from typing import cast, Any, TextIO
 from unittest.mock import patch
 
-from conftest import delete_files
 
 from ae.base import DATE_TIME_ISO, force_encoding, norm_path, read_file, write_file
 from ae.paths import PATH_PLACEHOLDERS, placeholder_path, coll_folders, Collector
@@ -21,8 +21,8 @@ from ae.core import (
     activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
     registered_app_names,
     AppBase, _PrintingReplicator)
-import ae.paths     # for patch tests of ae.paths.PATH_PLACEHOLDERS
-import ae.core      # for patch tests of ae.core.PATH_PLACEHOLDERS
+import ae.paths                 # for patch tests of ae.paths.PATH_PLACEHOLDERS
+import ae.core                  # for patch tests of ae.core.PATH_PLACEHOLDERS
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
@@ -157,7 +157,7 @@ class TestAeLogging:
         log_file = 'test_ae_cov_log.log'
         valid_log_content = "TestBaseLogEntry"
         invalid_log_content = "NeverAppearInLogFile"
-        fb, ext = os.path.splitext(log_file)    # simulate left-over log file from last app run - coverage
+        fb, ext = os.path.splitext(log_file)    # simulate a left-over log file from the last app run - coverage
         idx = 1
         write_file(f"{fb}-{idx:0>{LOG_FILE_IDX_WIDTH}}{ext}",
                    f"log file content to test left-over from last app run{invalid_log_content}")
@@ -215,7 +215,7 @@ class TestAeLogging:
             app.po(tst_out)
             out, err = capsys.readouterr()
             assert out == "" and err == ""
-            app.init_logging()      # close log file
+            app.init_logging()      # close the log file
             assert os.path.exists(log_file)
             out, err = capsys.readouterr()
             assert out == "" and err == ""
@@ -236,7 +236,7 @@ class TestAeLogging:
             app.po(tst_out)
             out, err = capsys.readouterr()
             assert out == "" and err == ""
-            app.init_logging()      # close log file
+            app.init_logging()      # close the log file
             assert os.path.exists(log_file)
             out, err = capsys.readouterr()
             assert out == "" and err == ""
@@ -277,7 +277,7 @@ class TestAeLogging:
             app.po(mp + tst_out + "_2")
             sub.po(sp + tst_out)
             sub.init_logging()
-            app.init_logging()  # close log file
+            app.init_logging()  # close the log file
             # NOT WORKING: capsys.readouterr() returning empty strings
             # out, err = capsys.readouterr()
             # assert out.count(tst_out) == 3 and err == ""
@@ -317,12 +317,12 @@ class TestAeLogging:
             sub_thread = threading.Thread(target=sub_app_po)
             sub_thread.start()
             while not sub_printed:      # NOT ENOUGH fails on gitlab CI: not sub or not sub.active_log_stream:
-                pass                    # wait until sub-thread has called init_logging()  # pragma: no cover
+                pass                    # wait until the sub-thread has called init_logging()  # pragma: no cover
             print_out(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")
-            sub.init_logging()          # close sub-app log file created by sub_thread
+            sub.init_logging()          # close the sub-app log file created by sub_thread
             sub_thread.join()
-            app.init_logging()          # close main-app log file
+            app.init_logging()          # close the main-app log file
             assert os.path.exists(sp + log_file)
             assert os.path.exists(mp + log_file)
         finally:
@@ -340,7 +340,7 @@ class TestAeLogging:
     def test_exception_log_file_flush(self, restore_app_env):
         app = AppBase('test_exception_base_log_file_flush')
         # cause/provoke _append_eof_and_flush_file() exceptions for coverage by passing any other non-stream object
-        app._append_eof_and_flush_file(cast('TextIO', None), 'invalid stream')
+        app._append_eof_and_flush_file(cast(TextIO, None), 'invalid stream')
 
     def test_app_instances_reset2(self):
         assert main_app_instance() is None
@@ -371,7 +371,6 @@ class TestPythonLogging:
 
         cae = AppBase('test_python_logging_params_dict_console')
         cae.init_logging(py_logging_params=var_val)
-
 
         assert cae.py_log_params == var_val
         logging.shutdown()
@@ -450,14 +449,14 @@ class TestPythonLogging:
             cae.po(log_text, logger=ae_cae_logger)
         finally:
             logging.shutdown()
-            # multiple log files because log text has 34 bytes but RotatingFileHandler maxbytes is 33
+            # multiple log files because the log text has 34 bytes but RotatingFileHandler maxbytes is 33
             files_contents = delete_files(log_file, ret_type='contents')
             assert len(files_contents) > 1
             assert any(_.endswith(log_text + os.linesep) for _ in files_contents)
 
         # logging
         try:
-            logging.info(entry_prefix + "1 info")       # will NOT be added to log
+            logging.info(entry_prefix + "1 info")       # will NOT be added to the log
         finally:
             logging.shutdown()
             assert delete_files(log_file) == 0
@@ -664,7 +663,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
                     cae._init_path_placeholders()
                 finally:
                     for re_dir in Collector(item_collector=coll_folders
-                                            ).collect(usr_path, select=cae.app_name + "*", only_first_of=()).paths:
+                                            ).collect(usr_path, select=cae.app_name + "*").paths:
                         shutil.rmtree(re_dir)
                 assert ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)
                 assert placeholder_path(ae.core.PATH_PLACEHOLDERS['ado']).startswith("{usr}")
@@ -697,7 +696,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
                     cae._init_path_placeholders()
                 finally:
                     for re_dir in Collector(item_collector=coll_folders
-                                            ).collect(usr_path, select=cae.app_name + "*", only_first_of=()).paths:
+                                            ).collect(usr_path, select=cae.app_name + "*").paths:
                         shutil.rmtree(re_dir)
                 assert ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)
                 assert placeholder_path(ae.core.PATH_PLACEHOLDERS['ado']).startswith("{usr}")
@@ -747,7 +746,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         us = chr(0xD801)
         app.po(us, encode_errors_def='strict')
 
-        # multi_threading has to be reset to prevent debug test run freeze (added multi_threading for coverage)
+        # multi_threading has to be reset to prevent a debug test run freeze (added multi_threading for coverage)
         _deactivate_multi_threading()
 
     def test_app_instances_reset2(self):
