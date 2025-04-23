@@ -7,9 +7,9 @@ and GUI frameworks that are supported by the ae portions namespace, in order to 
 your application project (and of other ae namespace modules/portions).
 
 .. note::
-    on import of this portion, before any of the app environment got initialized, it calls the function
+    on import of this portion, and before the app environment got initialized, it calls the function
     :func:`~ae.updater.check_all` of the :mod:`ae.updater` portion in order to prepare the app
-    on first start after their installation, and to check for updates of the app on every app start.
+    on the first start after their installation, and to check for updates of the app on every app start.
 
 
 core constants
@@ -20,11 +20,11 @@ there are three debug level constants: :data:`DEBUG_LEVEL_DISABLED`, :data:`DEBU
 the debug level of your application can be either set in your code or optionally data-driven externally (using the
 :ref:`config-files` or :ref:`config-options` of the module :mod:`ae.console`).
 
-to use the :mod:`python logging module <logging>` in conjunction with this module the constant :data:`LOGGING_LEVELS` is
-providing a mapping between the debug levels and the python logging levels.
+to use the :mod:`python logging module <logging>` in conjunction with this module, the constant :data:`LOGGING_LEVELS`
+is providing a mapping between the debug levels and the python logging levels.
 
 the encoding of strings into byte-strings (to output them to the console/stdout or to file contents) can be tricky
-sometimes. to not lose any logging output because of invalid characters this module will automatically handle any
+sometimes. to not lose any logging output because of invalid characters, this module will automatically handle any
 :exc:`UnicodeEncodeError` exception for you. invalid characters will then automatically be converted to the default
 encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error handling method specified by
 :data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the :mod:`ae.base` namespace portion/module).
@@ -37,14 +37,14 @@ from the :data:`build config file <ae.base.BUILD_CONFIG_FILE>` - if it exists in
 core helper functions
 ---------------------
 
-the :func:`print_out` function, which is fully compatible to pythons :func:`print`, is using the encode helpers
-:func:`~ae.base.force_encoding` and :func:`~.ae.base.to_ascii` to autocorrect invalid characters.
+the :func:`print_out` function, which is fully compatible to pythons :func:`print`, is using the encoding helper
+functions :func:`~ae.base.force_encoding` and :func:`~.ae.base.to_ascii` to autocorrect invalid characters.
 
 the function :func:`hide_dup_line_prefix` is very practical if you want to remove or hide redundant line prefixes in
 your log files, to make them better readable.
 
 the two functions :func:`request_app_permissions` and :func:`start_app_service` get only implemented if your app is
-running in Android OS; in other systems they are declared no-op dummy functions. the first one get called automatically
+running in Android OS; in other systems they are declared no-op dummy functions. the first one gets called automatically
 on app start to request permissions from the app user (if not already granted), and the second one allows you
 to start a background service for your app.
 
@@ -57,12 +57,12 @@ class :class:`~ae.core.AppBase`, provided by this portion, has to be created. on
 of this class created at run-time represents the main application thread, having the value `True`
 in its app instance property :attr:`~ae.core.AppBase.is_main`.
 
-additional sub-app instances of :class:`~ae.core.AppBase` can be created, if your app needs separate
-logging/debugging configuration for one of their sub-threads (e.g. for
+additional sub-app instances of :class:`~ae.core.AppBase` can be created if your app needs separate
+logging/debugging configuration for one of their sub-threads (e.g., for
 web or database server threads integrated in your app).
 
 the :meth:`~AppBase.shutdown` method will make sure that first all the created sub-thread instances will get
-terminated and joined to the main app thread. additionally all print-out buffers will be flushed into any
+terminated and joined to the main app thread. additionally, all print-out buffers will be flushed into any
 activated log files.
 
 
@@ -71,7 +71,7 @@ basic usage of an application base class
 
 at the top of your python application main file/module create an instance of the class :class:`AppBase`::
 
-    \"\"\"  docstring at the top of the main module of your application  \"\"\"
+    \"\"\" docstring at the top of the main module of your application \"\"\"
     from ae.core import AppBase
 
     __version__ = '1.2.3'
@@ -79,14 +79,14 @@ at the top of your python application main file/module create an instance of the
     ca = AppBase()
 
 in the above example the :class:`AppBase` instance will automatically use the docstring title of the module as
-application title and the string in the module variable __version___ as application version. to overwrite these defaults
+application title and the string in the module variable __version___ as the app version. to overwrite these defaults,
 pass your application title and version string via the arguments :paramref:`~AppBase.app_title` and
 :paramref:`~AppBase.app_version` to the instantiation of :class:`AppBase`::
 
     ca = AppBase(app_title="title of this app instance", app_version='3.2.1')
 
 other automatically initialized instance attributes of :class:`AppBase` are documented underneath in the
-:class:`class docstring <AppBase>`. they include e.g. the
+:class:`class docstring <AppBase>`. they include e.g., the
 :attr:`date and time when the instance got created <AppBase.startup_beg>`, the
 :attr:`name/id of this application instance <AppBase.app_name>` or the :attr:`application path <AppBase.app_path>`.
 
@@ -97,11 +97,11 @@ application class hierarchy
 for most use cases you will not instantiate from :class:`AppBase` directly - instead you will instantiate one of the
 extended application classes that are inherited from this base class.
 
-the class :class:`~ae.console.ConsoleApp` e.g. inherits from :class:`AppBase` and is adding configuration options and
+the class :class:`~ae.console.ConsoleApp` e.g., inherits from :class:`AppBase` and is adding configuration options and
 variables to it. so in your console application it is recommended to directly use instances of
 :class:`~ae.console.ConsoleApp` instead of :class:`AppBase`.
 
-for applications with an GUI use instead one of the classes :class:`~ae.kivy.apps.KivyMainApp`,
+for applications with a GUI use instead one of the classes :class:`~ae.kivy.apps.KivyMainApp`,
 :class:`~ae.enaml_app.EnamlMainApp` or :class:`~ae.toga_app.TogaMainApp`.
 
 
@@ -109,7 +109,7 @@ application logging
 -------------------
 
 print-outs are an essential tool for the debugging and logging of your application at run-time. in python the print-outs
-are done with the :func:`print` function or with the python :mod:`logging` module. these print-outs get per default send
+are done with the :func:`print` function or with the python :mod:`logging` module. these print-outs get sent per default
 to the standard output and error streams of your OS and so displayed on your system console/shell. the :func:`print_out`
 function and the :meth:`~AppBase.print_out` method of this :mod:`.core` module are adding two more sophisticated ways
 for print-outs to the console/log-files.
@@ -118,24 +118,24 @@ using :class:`AppBase` is making the logging much easier and also ensures that p
 package will be included within your log files. this is done by redirecting the standard output and error streams to
 your log files with the help of the :class:`_PrintingReplicator` class.
 
-head-less server applications like web servers are mostly not allowed to use the standard output streams. for some these
-applications you could redirect the standard output and error streams to a log file by using the OS redirection
-character (``>``)::
+headless server applications like web servers are mostly not allowed to use the standard output streams. for some
+of these applications you could redirect the standard output and error streams to a log file by using the OS redirection
+character (``>``):
 
     python your_application.py >log_std_out.log 2>log_std_err.log
 
-but because most web servers doesn't allow you to use this redirection, you can alternatively specify the
+but because most web servers don't allow you to use this redirection, you can alternatively specify the
 :paramref:`~AppBase.suppress_stdout` parameter as ``True`` in the instantiation of an :class:`AppBase` instance.
-additionally you can call the :meth:`~AppBase.init_logging` method to activate a log file. after that all print-outs of
-your application and libraries will only appear in your log file.
+additionally, you can call the :meth:`~AppBase.init_logging` method to activate a log file. after that, all
+the print-outs of your application and libraries will only appear in your log file.
 
-also in complex applications, where huge print-outs to the console can get lost easily, you want to use a log file
-instead. but even a single log file can get messy to read, especially for multithreading server applications. for that
+also, in complex applications, where huge print-outs to the console can get lost easily, you want to use a log file
+instead. but even a single log file can get messy to read, especially for multithreading server applications. for that,
 additional sub-app/sub-thread instances of :class:`~ae.console.ConsoleApp` can be created for each thread/sub-app
 in order to specify their separate/own log file configuration.
 
 using this module ensures that any crashes or freezes happening in your application will be fully logged. apart from the
-gracefully handling of :exc:`UnicodeEncodeError` exceptions, the :mod:`Python faulthandler <faulthandler>` will be
+graceful handling of :exc:`UnicodeEncodeError` exceptions, the :mod:`Python faulthandler <faulthandler>` will be
 enabled automatically to catch system errors and to dump a traceback of them to the console and any activated log file.
 
 
@@ -145,7 +145,7 @@ activate ae log file
 .. _ae-log-file:
 
 ae log files are text files using by default the encoding of your OS console/shell. to activate the redirection of your
-applications print-outs into an ae log file for a :class:`AppBase` instance you simply specify the file name of the log
+application print-outs into an ae log file for a :class:`AppBase` instance, you simply specify the file name of the log
 file in the :meth:`~AppBase.init_logging` method call::
 
     app = AppBase()
@@ -155,15 +155,15 @@ file in the :meth:`~AppBase.init_logging` method call::
 activate ae logging features
 ............................
 
-for multithreaded applications include the thread-id of the printing thread automatically into your log files by
+for multithreaded applications include the thread-id of the printing thread automatically in your log files by
 passing a ``True`` value to the :paramref:`~AppBase.multi_threading` argument. to additionally also suppress any
-print-outs to the standard output/error streams pass ``True`` to the :paramref:`~AppBase.suppress_stdout` argument::
+print-outs to the standard output/error streams, pass ``True`` to the :paramref:`~AppBase.suppress_stdout` argument::
 
     app = AppBase(multi_threading=True, suppress_stdout=True)
     app.init_logging(log_file_name='my_log_file.log')
 
-the ae log files provided by this module are automatically rotating if the size of a log file succeeds the value in
-MBytes defined in the :data:`LOG_FILE_MAX_SIZE`. to adapt this value to your needs you can specify the maximum log file
+the log files provided by this module are automatically rotating if the size of a log file succeeds the value in
+MBytes defined in the :data:`LOG_FILE_MAX_SIZE`. to adapt this value to your needs, you can specify the maximum log file
 size in MBytes with the argument :paramref:`~AppBase.init_logging.log_file_size_max` in your call of
 :meth:`~AppBase.init_logging`::
 
@@ -192,19 +192,19 @@ will automatically disable the ae log file of this instance.
 application debugging
 ---------------------
 
-the debug features of the :mod:`~.core` portion providing additional run-time infos as console and/or log file output.
-the default debug level is set to  :data:`verbose debug output <DEBUG_LEVEL_VERBOSE>`. to change it at run-time first
+the debug features of the :mod:`~ae.core` portion provide additional run-time infos as console and/or log file output.
+the default debug level is set to  :data:`verbose debug output <DEBUG_LEVEL_VERBOSE>`. to change it at runtime first
 import the respective :ref:`debug level constant <debug-level-constants>`.
 
-to set the initial debug level to less verbose output you could specify at instantiation of your :class:`AppBase` class
+to set the initial debug level to less verbose output, you could specify at instantiation of your :class:`AppBase` class
 the :data:`DEBUG_LEVEL_ENABLED` constant onto the :paramref:`~AppBase.debug_level` argument::
 
     app = AppBase(..., debug_level= :data:`DEBUG_LEVEL_ENABLED`)
 
 by passing :data:`DEBUG_LEVEL_DISABLED` constant all debug print-outs will be disabled.
 
-alternatively you can set or change the :attr:`~AppBase.debug_level` property at run-time after the instantiation
-of the app instance. to disable debug output use :data:`DEBUG_LEVEL_DISABLED` constant::
+alternatively, you can set or change the :attr:`~AppBase.debug_level` property at run-time after the instantiation
+of the app instance. to disable debug output, use :data:`DEBUG_LEVEL_DISABLED` constant::
 
     app.debug_level = DEBUG_LEVEL_DISABLED
 
@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.70'
+__version__ = '0.3.71'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -285,7 +285,7 @@ if os_platform == 'android':  # pragma: no cover
     def start_app_service(service_arg: str = "") -> Any:
         """ start service.
 
-        :param service_arg:     string value to be assigned to environment variable PYTHON_SERVICE_ARGUMENT on start.
+        :param service_arg:     string to be assigned to environment variable PYTHON_SERVICE_ARGUMENT on service start.
         :return:                service instance.
 
         links to other android code and service examples and documentation:
@@ -309,14 +309,14 @@ if os_platform == 'android':  # pragma: no cover
 
         return service_instance
 
-    request_app_permissions()   # if not yet granted then request permissions from the app user on (first) app start
+    request_app_permissions()   # if not yet granted, then request permissions from the app user on (first) app start
 
 else:
     request_app_permissions = dummy_function
     start_app_service = dummy_function
 
 
-# DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to following DEBUG_ constants
+# DON'T RE-ORDER: using module doc-string as _debug-level-constants sphinx hyperlink to the following DEBUG_ constants:
 DEBUG_LEVEL_DISABLED: int = 0       #: lowest debug level - only display logging levels ERROR/CRITICAL.
 DEBUG_LEVEL_ENABLED: int = 1        #: minimum debugging info - display logging levels WARNING or higher.
 DEBUG_LEVEL_VERBOSE: int = 2        #: verbose debug info - display logging levels INFO/DEBUG or higher.
@@ -335,7 +335,7 @@ HIDDEN_CREDENTIALS = ('password', 'token')      #: credential keys that are hidd
 def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
     """ replace duplicate characters at the start of two strings with spaces.
 
-    :param last_line:       last line string (e.g. the last line of text/log file).
+    :param last_line:       last line string (e.g., the last line of the text/log file).
     :param current_line:    current line string.
     :return:                current line string but duplicate characters at the beginning are replaced by space chars.
     """
@@ -347,7 +347,7 @@ def hide_dup_line_prefix(last_line: str, current_line: str) -> str:
 
 
 MAX_NUM_LOG_FILES: int = 69                         #: maximum number of :ref:`ae log files <ae-log-file>`
-LOG_FILE_MAX_SIZE: int = 15                         #: max. size in MB of rotating :ref:`ae log files <ae-log-file>`
+LOG_FILE_MAX_SIZE: int = 15                         #: maximum size in MB of rotating :ref:`ae log files <ae-log-file>`
 LOG_FILE_IDX_WIDTH: int = len(str(MAX_NUM_LOG_FILES)) + 3
 """ width of rotating log file index within log file name; adding +3 to ensure index range up to factor 10^3. """
 
@@ -361,24 +361,24 @@ _LOGGER = None       #: python logger for this module gets lazy/late initialized
 
 
 def logger_late_init():
-    """ check if logging modules got initialized already and if not then do it now. """
-    global _LOGGER
+    """ check if logging modules got initialized already and if not, then do it now. """
+    global _LOGGER                                      # pylint: disable=global-statement
     if not _LOGGER:
         _LOGGER = logging.getLogger(__name__)
 
 
-_MULTI_THREADING_ACTIVATED: bool = False            #: flag if threading is used in your application
+_MULTI_THREADING_ACTIVATED: bool = False                #: flag if threading is used in your application
 
 
 def activate_multi_threading():
-    """ activate multi-threading for all app instances (normally done at main app startup). """
-    global _MULTI_THREADING_ACTIVATED
+    """ activate multi-threading for all app instances (normally done at the main app startup). """
+    global _MULTI_THREADING_ACTIVATED                   # pylint: disable=global-statement
     _MULTI_THREADING_ACTIVATED = True
 
 
 def _deactivate_multi_threading():
-    """ disable multi threading (needed to reset app environment in unit testing). """
-    global _MULTI_THREADING_ACTIVATED
+    """ disable multi threading (needed to reset the app environment in unit testing). """
+    global _MULTI_THREADING_ACTIVATED                   # pylint: disable=global-statement
     _MULTI_THREADING_ACTIVATED = False
 
 
@@ -387,17 +387,18 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
               app: Optional['AppBase'] = None, **kwargs):
     """ universal/unbreakable print function - replacement for the :func:`built-in python function print() <print>`.
 
-    :param objects:             tuple of objects to be printed. if the first object is a string that starts with a \\\\r
-                                character then the print-out will be only sent to the standard output (and will not be
-                                added to any active log files - see also :paramref:`~print_out.end` argument).
+    :param objects:             tuple of objects to be printed. if the first object is a string that starts with a
+                                carriage return character (\\\\r), then the print-out will be only sent to the standard
+                                output (and will not be added to any active log files - see also
+                                :paramref:`~print_out.end` argument).
     :param sep:                 separator character between each printed object/string (defaults to a space char).
     :param end:                 finalizing character added to the end of this print-out (defaults to a
                                 new-line char/\\\\n). pass a carriage-return char (\\\\r) in order to
                                 suppress the print-out into :ref:`ae log file <ae-log-file>` or to any activated python
                                 logger - useful for console/shell processing animation (see :meth:`.tcp.TcpServer.run`).
     :param file:                output stream object to be printed to (def=None which will use standard output streams).
-                                if given then the redirection to all active log files and python logging loggers will be
-                                disabled (even if the :paramref:`~print_out.logger` argument is specified).
+                                if given, then the redirection to all active log files and python logging loggers
+                                will be disabled (even if the :paramref:`~print_out.logger` argument is specified).
     :param flush:               flush stream after printing (def=False).
     :param encode_errors_def:   default error handling to encode (def=:data:`DEF_ENCODE_ERRORS`).
     :param logger:              used logger to output `objects` (def=None). ignored if the :paramref:`~print_out.file`
@@ -420,7 +421,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
 
     main_app = main_app_instance()
     if main_app:
-        file = main_app.log_file_check(file)    # check if late init of logging system is needed
+        file = main_app.log_file_check(file)    # check if late init of the logging system is needed
     if app and app != main_app:
         file = app.log_file_check(file)         # check sub-app suppress_stdout/log file status and rotation
     else:
@@ -442,8 +443,8 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
             print_strings = tuple(map(lambda _: str(_).encode(enc, errors=encode_errors_def).decode(enc), objects))
             if use_py_logger or _MULTI_THREADING_ACTIVATED:
                 # concatenating objects also prevents fluttered log file content in multi-threading apps
-                # .. see https://stackoverflow.com/questions/3029816/how-do-i-get-a-thread-safe-print-in-python-2-6
-                # .. and https://stackoverflow.com/questions/50551637/end-key-in-print-not-thread-safe
+                # see https://stackoverflow.com/questions/3029816/how-do-i-get-a-thread-safe-print-in-python-2-6
+                # and https://stackoverflow.com/questions/50551637/end-key-in-print-not-thread-safe
                 print_one_str = sep.join(print_strings)
                 sep = ""
                 if end and (not use_py_logger or end != '\n'):
@@ -470,7 +471,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
                 fixed_objects.append(obj)
             objects = tuple(fixed_objects)
             retries -= 1
-        except (IOError, OSError, ValueError, Exception):   # pragma: no cover
+        except (IOError, OSError, ValueError, Exception):   # pragma: no cover # pylint: disable=broad-except
             traceback.print_exc()
             print("...... in ae.core.print_out(", objects, ")")
             break
@@ -497,8 +498,8 @@ app_inst_lock: threading.RLock = threading.RLock()  #: app instantiation multi-t
 def main_app_instance() -> Optional['AppBase']:
     """ determine the main instance of the :class:`AppBase` in the current running application.
 
-    :return:                    main/first-instantiated :class:`AppBase` instance or None (if app is not fully
-                                initialized yet).
+    :return:                    the main and first-instantiated :class:`AppBase` instance or None (if the app is not
+                                fully initialized yet).
     """
     with app_inst_lock:
         return _APP_INSTANCES.get(_MAIN_APP_INST_KEY)
@@ -516,7 +517,7 @@ def _register_app_instance(app: 'AppBase'):
     :param app:                 :class:`AppBase` instance to register
     """
     with app_inst_lock:
-        global _MAIN_APP_INST_KEY
+        global _MAIN_APP_INST_KEY                       # pylint: disable=global-statement
         msg = f"register_app_instance({app}) expects "
         assert app not in _APP_INSTANCES.values(), msg + "new instance - this app got already registered"
 
@@ -540,7 +541,7 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
     :return:                    removed :class:`AppBase` instance.
     """
     with app_inst_lock:
-        global _MAIN_APP_INST_KEY
+        global _MAIN_APP_INST_KEY                       # pylint: disable=global-statement
         app = _APP_INSTANCES.pop(app_key, None)
         cnt = len(_APP_INSTANCES)
         if app_key == _MAIN_APP_INST_KEY:
@@ -558,9 +559,9 @@ def _shut_down_sub_app_instances(timeout: Optional[float] = None):
                                 acquisition of the threading locks of :data:`the ae log file <log_file_lock>` and the
                                 :data:`app instances <app_inst_lock>`.
     """
-    aqc_kwargs: Dict[str, Any] = (dict(blocking=False) if timeout is None else dict(timeout=timeout))
-    blocked = app_inst_lock.acquire(**aqc_kwargs)
-    for app in reversed(list(_APP_INSTANCES.values())):     # list is needed because weak ref dict get changed in loop
+    aqc_kwargs: Dict[str, Any] = ({'blocking': False} if timeout is None else {'timeout': timeout})
+    blocked = app_inst_lock.acquire(**aqc_kwargs)           # pylint: disable=consider-using-with
+    for app in reversed(list(_APP_INSTANCES.values())):     # list() because the weak ref dict gets changed in the loop
         if not app.is_main:
             app.shutdown(timeout=timeout)
     if blocked:
@@ -580,7 +581,7 @@ class _PrintingReplicator:
     def write(self, any_str: Union[str, bytes]) -> None:
         """ write string to ae logging and standard output streams.
 
-        automatically suppressing UnicodeEncodeErrors if console/shell or log file has different encoding by forcing
+        automatically suppressing UnicodeEncodeErrors if the console/shell or log file has different encoding by forcing
         re-encoding with DEF_ENCODE_ERRORS.
 
         :param any_str:         string or bytes to output.
@@ -607,7 +608,7 @@ class _PrintingReplicator:
                     stream.write(force_encoding(app_msg, encoding=stream.encoding))
 
     def __getattr__(self, attr: str) -> Any:
-        """ get attribute value from standard output stream.
+        """ get attribute value from the standard output stream.
 
         :param attr:            name of the attribute to retrieve/return.
         :return:                value of the attribute.
@@ -621,7 +622,7 @@ the joining of unit testing threads in the test teardown (resetting app environm
 
 
 def _register_app_thread():
-    """ add new app thread to _APP_THREADS if not already added. """
+    """ add a new app thread to _APP_THREADS if not already added. """
     tid = threading.get_ident()
     if tid not in _APP_THREADS:
         _APP_THREADS[tid] = threading.current_thread()
@@ -652,26 +653,26 @@ class AppBase:
 
     instance Attributes (ordered alphabetically - ignoring underscore characters):
 
-    * :attr:`app_key`               id/key of this application instance.
-    * :attr:`app_name`              basename (without the file name extension) of the executable.
-    * :attr:`app_path`              file path of app executable.
-    * :attr:`app_title`             application title/description.
-    * :attr:`app_version`           application version (set via the :paramref:`AppBase.app_version` argument).
-    * :attr:`debug_level`           debug level of this instance.
+    * :attr:`app_key` id/key of this application instance.
+    * :attr:`app_name` basename (without the file name extension) of the executable.
+    * :attr:`app_path` file path of app executable.
+    * :attr:`app_title` application title/description.
+    * :attr:`app_version` application version (set via the :paramref:`AppBase.app_version` argument).
+    * :attr:`debug_level` debug level of this instance.
     * :attr:`_last_log_line_prefix` last ae log file line prefix that got print-out to the log of this app instance.
-    * :attr:`_log_buf_stream`       ae log file buffer stream.
-    * :attr:`_log_file_index`       index of the current rotation ae log file backup.
-    * :attr:`_log_file_name`        path and file name of the ae log file.
-    * :attr:`_log_file_size_max`    maximum size in MBytes of an ae log file.
-    * :attr:`_log_file_stream`      ae log file TextIO output stream.
-    * :attr:`_log_with_timestamp`   log timestamp line prefix if True or a non-empty strftime compatible format string.
-    * :attr:`py_log_params`         python logging config dictionary.
-    * :attr:`_nul_std_out`          null stream used to prevent print-outs to :attr:`standard output <sys.stdout>`.
-    * :attr:`_shut_down`            flag set to True if this application instance got already shutdown.
-    * :attr:`startup_beg`           datetime of begin of the instantiation/startup of this app instance.
-    * :attr:`startup_end`           datetime of end of the instantiation/startup of this application instance.
-    * :attr:`suppress_stdout`       flag set to True if this application does not print to stdout/console.
-    * :attr:`sys_env_id`            system environment id of this application instance.
+    * :attr:`_log_buf_stream` ae log file buffer stream.
+    * :attr:`_log_file_index` index of the current rotation ae log file backup.
+    * :attr:`_log_file_name` path and file name of the ae log file.
+    * :attr:`_log_file_size_max` maximum size in MBytes of an ae log file.
+    * :attr:`_log_file_stream` ae log file TextIO output stream.
+    * :attr:`_log_with_timestamp` log timestamp line prefix if True or a non-empty strftime compatible format string.
+    * :attr:`py_log_params` python logging config dictionary.
+    * :attr:`_nul_std_out` null stream used to prevent print-outs to :attr:`standard output <sys.stdout>`.
+    * :attr:`_shut_down` flag set to True if this application instance got already shutdown.
+    * :attr:`startup_beg` datetime of the start of instantiation/startup of this app instance.
+    * :attr:`startup_end` datetime of the end of the instantiation/startup of this application instance.
+    * :attr:`suppress_stdout` flag set to True if this application does not print to stdout/console.
+    * :attr:`sys_env_id` system environment id of this application instance.
     """
     app_title: str = ""                             #: title/description of this app instance
     app_name: str = ''                              #: name of this app instance
@@ -696,25 +697,25 @@ class AppBase:
         """ initialize a new :class:`AppBase` instance.
 
         :param app_title:       application title/description setting the attribute :attr:`~ae.core.AppBase.app_title`.
-                                if not specified then the docstring of your app's main module will be used (see
+                                if not specified, then the docstring of your app's main module will be used (see
                                 :ref:`example <app-title>`).
         :param app_name:        application instance name to set the attribute :attr:`~ae.core.AppBase.app_name`. if not
-                                specified then base name of the main module file name will be used.
+                                 specified, then the base name of the main module file name will be used.
         :param app_version:     application version string to set the attribute :attr:`~ae.core.AppBase.app_version`. if
-                                not specified then value of a global variable with the name `__version__` will be used
-                                (if declared in the actual call stack).
+                                not specified, then the value of a global variable with the name `__version__` will be
+                                used (if declared in the actual call stack).
         :param sys_env_id:      system environment id to set the instance attribute :attr:`~ae.core.AppBase.sys_env_id`.
                                 the default value of this argument is an empty string.
         :param debug_level:     default debug level to set the instance attribute :attr:`~ae.core.AppBase.debug_level`.
                                 the default value of this argument is :data:`~ae.core.DEBUG_LEVEL_DISABLED`.
-        :param multi_threading: pass True if instance is used in multi-threading app.
+        :param multi_threading: pass True if this instance will be used in a multi-threading app.
         :param suppress_stdout: pass True (for wsgi apps) to prevent any python print outputs to stdout.
         """
         self.startup_beg: datetime.datetime = datetime.datetime.now()   #: begin of app startup datetime
         app_path = sys.argv[0]
-        if not os_path_isdir(app_path):                                 # if it is a console app module (not a package)
-            app_path = os_path_dirname(app_path)                        # .. then remove the module file name
-        self.app_path: str = norm_path(app_path)             #: path to folder of your main app code file
+        if not os_path_isdir(app_path):                 # if it is a console app module (not a package)
+            app_path = os_path_dirname(app_path)        # .. then remove the module file name
+        self.app_path: str = norm_path(app_path)        #: path to the folder of your main app code file
 
         if not app_title:
             doc_str = stack_var('__doc__')
@@ -734,24 +735,24 @@ class AppBase:
         _register_app_thread()
         _register_app_instance(self)
 
-        if self.is_main:                                        # if this instance is the main/first app instance
-            self._init_path_placeholders()                      # .. then init PATH_PLACEHOLDERS
+        if self.is_main:                                # if this instance is the main/first app instance
+            self._init_path_placeholders()              # .. then init PATH_PLACEHOLDERS
 
             app_path, cwd_path = norm_path(app_path), norm_path(os.getcwd())
-            if app_path == cwd_path:                            # if this app is not a dev-tool/grm   # pragma: no cover
-                destination_files = check_all()                 # .. then prepare app on first-run after install/ubgrade
+            if app_path == cwd_path:                    # if this app is not a dev-tool/grm # pragma: no cover
+                destination_files = check_all()         # then prepare the app on first-run after install/ubgrade
                 self.vpo(f"AppBase.__init__() updated {len(destination_files)} {destination_files=}")
             else:                                                                           # pragma: no cover
                 self.vpo(f"AppBase.__init__() upgrade check skipped because {app_path=} != {cwd_path=}")
 
     def _init_path_placeholders(self):
-        """ correct app_name/main_app_name, the related path placeholders and ensure write access for some ot them. """
+        """ correct app_name/main_app_name, the related path placeholders and ensure write access for some of them. """
         # correct app name guess, init by :mod:`ae.paths` (main app from ("", 'pyTstConsAppKey', '_jb_pytest_runner'))
         PATH_PLACEHOLDERS['main_app_name'] = PATH_PLACEHOLDERS['app_name'] = app_name = self.app_name
         PATH_PLACEHOLDERS['app'] = app_data_path()
         PATH_PLACEHOLDERS['ado'] = app_docs_path()
 
-        add_common_storage_paths()  # determine platform specific path placeholders, like e.g. {pictures}, {documents}..
+        add_common_storage_paths()  # determine platform-specific path placeholders, like e.g. {pictures}, {documents}..
 
         # to unmask in :meth:`ae.core.AppBase.__init__`/:meth:`ae.updater.check_all` the masked .apk extension of the
         # APK, embedded via grm-build_gui_app action, because buildozer/p4a does not embed it having an .apk extension
@@ -759,8 +760,8 @@ class AppBase:
             PATH_PLACEHOLDERS['apk_ext'] = 'apk'                                            # pragma: no cover
 
         # check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}; to be
-        # corrected/redirected to sub-folder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
-        # version>12 / API-level>33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help)
+        # corrected/redirected to subfolder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
+        # version > 12 / API-level > 33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help)
         file_content = "check right file content"
         for placeholder in [_ for _ in ('ado', 'doc', 'documents', 'downloads') if _ in PATH_PLACEHOLDERS]:
             name = f'check_write_access_on_{placeholder}'
@@ -773,8 +774,9 @@ class AppBase:
             try:
                 write_file(chk_file, file_content, make_dirs=True)
                 assert os_path_isfile(chk_file)
-                assert (access := read_file(chk_file) == file_content)
-            except (AssertionError, PermissionError, Exception) as chk_ex:
+                access = read_file(chk_file) == file_content
+                assert access
+            except (AssertionError, PermissionError, Exception) as chk_ex:  # pylint: disable=broad-except
                 err_msg += f": {chk_ex=!r}"
                 for alternative in [_ for _ in ('documents', 'videos', 'pictures', 'usr')
                                     if _ != placeholder and _ in PATH_PLACEHOLDERS]:
@@ -785,8 +787,9 @@ class AppBase:
                     try:
                         write_file(alt_file, file_content, make_dirs=True)
                         assert os_path_isfile(alt_file)
-                        assert (access := read_file(alt_file) == file_content)
-                    except (AssertionError, PermissionError, Exception) as alt_ex:
+                        access = read_file(alt_file) == file_content
+                        assert access
+                    except (AssertionError, PermissionError, Exception) as alt_ex:  # pylint: disable=broad-except
                         err_msg += f"; {alternative=} access error {alt_ex=} for {alt_file=}"
                     finally:
                         if access and os_path_isfile(alt_file):
@@ -809,7 +812,7 @@ class AppBase:
 
     @property
     def active_log_stream(self) -> Optional[Union[StringIO, TextIO]]:
-        """ check if ae logging is active and if yes then return the currently used log stream (read-only property).
+        """ check if ae logging is active and if yes, then return the currently used log stream (read-only property).
 
         :return:                log file or buf stream if logging is activated, else None.
         """
@@ -840,7 +843,7 @@ class AppBase:
 
     @property
     def debug(self) -> bool:
-        """ True if app is in debug mode. """
+        """ True if the app is in debug mode. """
         return self._debug_level >= DEBUG_LEVEL_ENABLED
 
     @property
@@ -850,7 +853,7 @@ class AppBase:
 
     @property
     def verbose(self) -> bool:
-        """ True if app is in verbose debug mode. """
+        """ True if the app is in verbose debug mode. """
         return self._debug_level >= DEBUG_LEVEL_VERBOSE
 
     def call_method(self, callback: Union[Callable, str], *args, **kwargs) -> Any:
@@ -859,7 +862,8 @@ class AppBase:
         :param callback:            either a callable or the name of the main app method of this instance to call.
         :param args:                args passed to the main app method to be called.
         :param kwargs:              kwargs passed to the main app method to be called.
-        :return:                    return value of the called method or None if method throws exception/does not exist.
+        :return:                    the return value of the called method
+                                    or None if the callback method throws exception/does not exist.
         """
         if isinstance(callback, str):
             callback = getattr(self, callback, None)    # type: ignore
@@ -868,7 +872,7 @@ class AppBase:
 
         try:
             return callback(*args, **kwargs)            # type: ignore
-        except Exception as ex:     # AttributeError, LookupError, TypeError, ValueError
+        except (AttributeError, LookupError, TypeError, ValueError, Exception) as ex:  # pylint: disable=broad-except
             self.po(f" ***  AppBase.call_method({callback}, {args}, {kwargs}): {ex}\n{traceback.format_exc()}")
 
         return None
@@ -876,18 +880,18 @@ class AppBase:
     def init_logging(self, py_logging_params: Optional[Dict[str, Any]] = None, log_file_name: str = "",
                      log_file_size_max: float = LOG_FILE_MAX_SIZE, log_with_timestamp: Union[bool, str] = False,
                      disable_buffering: bool = False):
-        """ initialize logging system.
+        """ initialize the logging system.
 
-        :param py_logging_params:   config dict for python logging configuration. if this dict is not empty then python
+        :param py_logging_params:   config dict for python logging configuration. if this dict is not empty, then python
                                     logging is configured with the given options in this dict and all the other kwargs
                                     are ignored.
         :param log_file_name:       default log file name for ae logging (def='' - ae logging disabled).
         :param log_file_size_max:   max. size in MB of ae log file (def=LOG_FILE_MAX_SIZE).
-        :param log_with_timestamp:  add timestamp prefix to each log line if True or a non-empty strftime compatible
+        :param log_with_timestamp:  add a timestamp prefix to each log line if True or a non-empty strftime compatible
                                     format string.
         :param disable_buffering:   pass True to disable ae log buffering at app startup.
 
-        log files and config values will be initialized as late as possible in :meth:`~AppBase.log_file_check`, e.g.
+        log files and config values will be initialized as late as possible in :meth:`~AppBase.log_file_check`, e.g.,
         indirectly triggered by a request to a config variable via :meth:`~AppBase._parse_args` (like `logFile`).
         """
         with log_file_lock:
@@ -912,19 +916,19 @@ class AppBase:
         the line prefix consists of (depending on the individual values of either a module variable or of an
         attribute this app instance):
 
-        * :data:`_MULTI_THREADING_ACTIVATED`: if True then the thread id gets printed surrounded with
-          angle brackets (< and >), right aligned and space padded to minimal 6 characters.
-        * :attr:`sys_env_id`: if not empty then printed surrounded with curly brackets ({ and }), left aligned
-          and space padded to minimal 4 characters.
-        * :attr:`_log_with_timestamp`: if (a) True or (b) a non-empty string then the system time
-          (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified either by the
-          (a) the :data:`~ae.base.DATE_TIME_ISO` constant or (b) by the string in this attribute.
+        * :data:`_MULTI_THREADING_ACTIVATED`: if True, then the thread id gets printed surrounded with
+          angle brackets (< and >), right aligned and space padded to A minimum of 6 characters.
+        * :attr:`sys_env_id`: if not empty, then printed surrounded with curly brackets ({ and }), left aligned
+          and space padded to a minimum of 4 characters.
+        * :attr:`_log_with_timestamp`: if (a) True or (b) a non-empty string, then the system time
+          (determined with :meth:`~datetime.datetime.now`) gets printed in the format specified either by
+          (a) the :data:`~ae.base.DATE_TIME_ISO` constant or (b) the string in this attribute.
 
         this method is using the instance attribute :attr:`_last_log_line_prefix` to keep a copy of
         the last printed log line prefix to prevent the printout of duplicate characters in consecutive
         log lines.
 
-        :return:                log file line prefix string including one space as separator character at the end.
+        :return:                log file line prefix string including one space as a separator character at the end.
         """
         parts = []
         if _MULTI_THREADING_ACTIVATED:
@@ -952,15 +956,15 @@ class AppBase:
                                 new/redirected stream of :paramref:`~log_file_check.curr_stream` or
                                 None if :paramref:`~log_file_check.curr_stream` is None.
 
-        for already opened log files check if the ae log file is big enough and if yes then do a file rotation.
-        if log file is not opened but log file name got already set, then check if log startup buffer is active
-        and if yes then create log file, pass log buffer content to log file and close the log buffer.
+        for already opened log files, check if the log file is big enough, and if yes, then do a file rotation. if the
+        log file is not opened but the log file name got already set, then check if the log startup buffer is active,
+        and if yes, then create a new log file, pass log buffer content to it and close the log buffer.
         """
         old_stream = new_stream = None
         with log_file_lock:
             if self._log_file_stream:
                 old_stream = self._log_file_stream
-                self._log_file_stream.seek(0, 2)  # due to non-posix-compliant windows feature
+                self._log_file_stream.seek(0, 2)  # seek EOF due to the non-posix-compliant Windows feature
                 if self._log_file_stream.tell() >= self._log_file_size_max * 1024 * 1024:
                     self._close_log_file()
                     self._rename_log_file()
@@ -974,6 +978,7 @@ class AppBase:
                 new_stream = self._log_file_stream
             elif self.suppress_stdout and not self._nul_std_out:    # pragma: no cover/_std_out_err_redirection does it
                 old_stream = sys.stdout
+                # pylint: disable-next=unspecified-encoding, consider-using-with
                 sys.stdout = self._nul_std_out = new_stream = open(os.devnull, 'w')
 
         if curr_stream == old_stream and new_stream:
@@ -985,9 +990,9 @@ class AppBase:
 
         :param objects:         objects to be printed out.
         :param file:            output stream object to be printed to (def=None). passing None on a main app instance
-                                will print the objects to the standard output and any active log files. in contrary,
-                                on a sub-app/sub-thread instance with an active log file the print-out
-                                will get redirected exclusively/only to log file of this sub-app instance.
+                                will print the objects to the standard output and any active log files. on the contrary,
+                                on a sub-app/sub-thread instance with an active log file, the print-out
+                                will get redirected exclusively/only to the log file of this sub-app instance.
         :param kwargs:          all the other supported kwargs of this method are documented
                                 :func:`at the print_out() function of this module <print_out>`.
 
@@ -1042,7 +1047,7 @@ class AppBase:
     vpo = verbose_out         #: alias of method :meth:`.verbose_out`
 
     def shutdown(self, exit_code: Optional[int] = 0, timeout: Optional[float] = None):
-        """ shutdown this app instance and if it is the main app instance then also any created sub-app-instances.
+        """ shutdown this app instance, and if it is the main app instance, then also any created sub-app-instances.
 
         :param exit_code:       set application OS exit code - ignored if this is NOT the main app instance (def=0).
                                 pass None to prevent call of sys.exit(exit_code).
@@ -1052,19 +1057,21 @@ class AppBase:
         """
         if self._shut_down:
             return
-        aqc_kwargs: Dict[str, Any] = dict(blocking=False) if timeout is None else dict(timeout=timeout)
+        aqc_kwargs: Dict[str, Any] = {'blocking': False} if timeout is None else {'timeout': timeout}
         is_main_app_instance = main_app_instance() is self      # self.is_main==True when main_app_instance() is None
         force = is_main_app_instance and exit_code      # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
             self.po(f"####  Shutdown {self.app_name}..........  {exit_code if force else ''} {timeout}", logger=_LOGGER)
 
+        # pylint: disable-next=consider-using-with
         a_blocked = (False if force else app_inst_lock.acquire(**aqc_kwargs))
         if is_main_app_instance:
             _shut_down_sub_app_instances(timeout=timeout)
             if _MULTI_THREADING_ACTIVATED:
                 _join_app_threads(timeout=timeout)
 
+        # pylint: disable-next=consider-using-with
         l_blocked = (False if force else log_file_lock.acquire(**aqc_kwargs))
 
         self._flush_and_close_log_buf()
@@ -1106,6 +1113,7 @@ class AppBase:
                 elif self._nul_std_out and not self._nul_std_out.closed:
                     std_out = self._nul_std_out
                 else:
+                    # pylint: disable-next=unspecified-encoding, consider-using-with
                     std_out = self._nul_std_out = open(os.devnull, 'w')
                 sys.stdout = cast(TextIO, _PrintingReplicator(sys_out_obj=std_out))
                 sys.stderr = cast(TextIO, _PrintingReplicator(sys_out_obj=ori_std_err))
@@ -1121,7 +1129,7 @@ class AppBase:
                 faulthandler.disable()  # pragma: no cover (badly testable - would cancel/break test runs)
 
     def _append_eof_and_flush_file(self, stream_file: TextIO, stream_name: str):
-        """ add special end-of-file marker and flush the internal buffers to the file stream.
+        """ add a special end-of-file marker in debug mode and flush the internal buffers to the file stream.
 
         :param stream_file:     file stream.
         :param stream_name:     name of the file stream (only used for debugging/error messages).
@@ -1143,7 +1151,7 @@ class AppBase:
             self.po(f"Ignorable {stream_name} flush exception={ex}", logger=_LOGGER)
 
     def _flush_and_close_log_buf(self):
-        """ flush and close ae log buffer and pass content to log stream if opened. """
+        """ flush and close ae log buffer and pass content to the log stream if opened. """
         stream = self._log_buf_stream
         if stream:
             if self._log_file_stream:
@@ -1154,9 +1162,9 @@ class AppBase:
             stream.close()
 
     def _open_log_file(self):
-        """ open the ae log file with path and file name specified by :attr:`_log_file_name`.
+        """ open the ae log file with a path and file name specified by :attr:`_log_file_name`.
 
-        tries to create a log sub-folder - if specified in :attr:`_log_file_name` and
+        tries to create a log subfolder - if specified in :attr:`_log_file_name` and
         the folder does not exist (folder creation is limited to one folder level).
 
         .. note:: an already existing file with the same file name will be overwritten (file contents get lost!).
@@ -1164,6 +1172,7 @@ class AppBase:
         log_dir = os_path_dirname(self._log_file_name)
         if log_dir and not os_path_isdir(log_dir):
             os.mkdir(log_dir)
+        # pylint: disable-next=unspecified-encoding, consider-using-with
         self._log_file_stream = open(self._log_file_name, "w", errors=DEF_ENCODE_ERRORS)
 
     def _close_log_file(self):
@@ -1180,12 +1189,12 @@ class AppBase:
         file_base, file_ext = os_path_splitext(self._log_file_name)
         dfn = f"{file_base}-{self._log_file_index:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
         if os_path_isfile(dfn):
-            os.remove(dfn)                              # remove old log file from previous app run
+            os.remove(dfn)                              # remove the old log file from the previous app run
         if os_path_isfile(self._log_file_name):         # prevent errors after log file error or unit test cleanup
             os.rename(self._log_file_name, dfn)
 
         self._log_file_index += 1
-        if self._log_file_index > MAX_NUM_LOG_FILES:    # use > instead of >= to always keep first/startup log file
+        if self._log_file_index > MAX_NUM_LOG_FILES:    # use > instead of >= to always keep the first/startup log file
             first_idx = self._log_file_index - MAX_NUM_LOG_FILES
             dfn = f"{file_base}-{first_idx:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
             if os_path_isfile(dfn):
