@@ -369,10 +369,10 @@ class TestPythonLogging:
                                               'level': logging.INFO}))
         print(str(var_val))
 
-        cae = AppBase('test_python_logging_params_dict_console')
-        cae.init_logging(py_logging_params=var_val)
+        main_app = AppBase('test_python_logging_params_dict_console')
+        main_app.init_logging(py_logging_params=var_val)
 
-        assert cae.py_log_params == var_val
+        assert main_app.py_log_params == var_val
         logging.shutdown()
 
     def test_logging_params_dict_complex(self, restore_app_env):
