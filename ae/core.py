@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.71'
+__version__ = '0.3.72'
 
 
 # package and permissions handling defaults for all platforms and frameworks
