@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.72'
+__version__ = '0.3.73'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -364,7 +364,7 @@ def logger_late_init():
     """ check if logging modules got initialized already and if not, then do it now. """
     global _LOGGER                                      # pylint: disable=global-statement
     if not _LOGGER:
-        _LOGGER = logging.getLogger(__name__)
+        _LOGGER = logging.getLogger(__name__)           # reset (_LOGGER = None) done in _unregister_app_instance()
 
 
 _MULTI_THREADING_ACTIVATED: bool = False                #: flag if threading is used in your application
@@ -541,6 +541,9 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
     :return:                    removed :class:`AppBase` instance.
     """
     with app_inst_lock:
+        global _LOGGER                                  # pylint: disable=global-statement
+        _LOGGER = None
+
         global _MAIN_APP_INST_KEY                       # pylint: disable=global-statement
         app = _APP_INSTANCES.pop(app_key, None)
         cnt = len(_APP_INSTANCES)
@@ -549,6 +552,7 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
             assert cnt == 0, f"{cnt} sub-apps {list(_APP_INSTANCES.keys())} found after main app {app_key}{app} remove"
         elif _MAIN_APP_INST_KEY:
             assert cnt > 0, f"Unregistered last app {app_key}/{app} but was not the main app {_MAIN_APP_INST_KEY}"
+
         return app
 
 
@@ -1059,10 +1063,10 @@ class AppBase:
             return
         aqc_kwargs: Dict[str, Any] = {'blocking': False} if timeout is None else {'timeout': timeout}
         is_main_app_instance = main_app_instance() is self      # self.is_main==True when main_app_instance() is None
-        force = is_main_app_instance and exit_code      # prevent deadlock on app error exit/shutdown
+        force = is_main_app_instance and exit_code              # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
-            self.po(f"####  Shutdown {self.app_name}..........  {exit_code if force else ''} {timeout}", logger=_LOGGER)
+            self.po(f"##### {'forced ' if force else ''} shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
         # pylint: disable-next=consider-using-with
         a_blocked = (False if force else app_inst_lock.acquire(**aqc_kwargs))

@@ -1,12 +1,12 @@
-<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae V0.3.96 -->
+<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae v0.3.96 -->
 <!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.tpl_namespace_root V0.3.14 -->
-# core 0.3.72
+# core 0.3.73
 
 [![GitLab develop](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/develop?logo=python)](
     https://gitlab.com/ae-group/ae_core)
 [![LatestPyPIrelease](
-    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.71?logo=python)](
-    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.71)
+    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.72?logo=python)](
+    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.72)
 [![PyPIVersions](https://img.shields.io/pypi/v/ae_core)](
     https://pypi.org/project/ae-core/#history)
 
