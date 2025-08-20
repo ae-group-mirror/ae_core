@@ -375,6 +375,33 @@ class TestPythonLogging:
         assert main_app.py_log_params == var_val
         logging.shutdown()
 
+    def test_logging_params_dict_console_from_init_with_log_file(self, restore_app_env):
+        log_file = 'tst_py_log_complex.log'
+        entry_prefix = "TST LOG ENTRY "
+
+        var_val = dict(version=1,
+                       disable_existing_loggers=False,
+                       handlers=dict(console={'class': 'logging.handlers.RotatingFileHandler',
+                                              'level': logging.INFO,
+                                              'filename': log_file,
+                                              'maxBytes': 33,
+                                              'backupCount': 63}),
+                       loggers={'root': dict(handlers=['console']),
+                                'ae': dict(handlers=['console']),
+                                'ae.console': dict(handlers=['console'])}
+                       )
+        print(str(var_val))
+
+        cae = AppBase('test_python_logging_params_dict_file', debug_level=DEBUG_LEVEL_DISABLED)
+        cae.init_logging(py_logging_params=var_val)
+
+        assert cae.py_log_params == var_val
+
+        # logging.shutdown()     TODO: encapsulate with _LOGGER = None into new method reset_logging() and add it to restore_app_env fixture ?!?!?
+
+        # empty log file created by logging.config.dictConfig(py_logging_params) in :func:`ae.core.AppBase.init_logging`
+        assert delete_files(log_file, ret_type='contents')[0] == ""
+
     def test_logging_params_dict_complex(self, restore_app_env):
         """ test logging with rotating file handler, first refactored migrated from
 
@@ -409,7 +436,7 @@ class TestPythonLogging:
         print(str(var_val))
 
         cae = AppBase('test_python_logging_params_dict_file', debug_level=DEBUG_LEVEL_DISABLED)
-        cae.init_logging(py_logging_params=var_val)
+        cae.init_logging(py_logging_params=var_val)  # logging.config.dictConfig(py_logging_params) creates empty logFil
 
         assert cae.py_log_params == var_val
 
@@ -424,15 +451,16 @@ class TestPythonLogging:
         finally:
             logging.shutdown()
             files_contents = delete_files(log_file, ret_type='contents')
-            assert len(files_contents) >= 1
+            assert len(files_contents) == 1
             assert files_contents[0] == ""
+            # FIXME?!?!? empty log file created in log_init gets not extended by the above cae.po() call
 
         try:
             log_text = entry_prefix + "0 print_out root"
             cae.po(log_text, logger=root_logger)
         finally:
             logging.shutdown()
-            # grm-pytest-run: assert delete_files(log_file) == 0
+            # grm-pytest-run: assert delete_files(log_file) == 0 FIXME?!?!?
             # pycharm-pytest-run: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
