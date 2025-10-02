@@ -232,7 +232,7 @@ import weakref
 from io import StringIO
 from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
 
-from ae.base import (  # type: ignore
+from ae.base import (                                                                                   # type: ignore
     BUILD_CONFIG_FILE, DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
     build_config_variable_values, defuse, dummy_function, force_encoding, norm_path,
     os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext, os_platform,
@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.74'
+__version__ = '0.3.75'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -912,7 +912,7 @@ class AppBase:
                 self._log_file_size_max = log_file_size_max
                 self._log_with_timestamp = log_with_timestamp
                 if not disable_buffering:
-                    self._log_buf_stream = StringIO(initial_value="####  Log Buffer\n" if self.debug else "")
+                    self._log_buf_stream = StringIO(initial_value="\n  vv  Log Buffer\n" if self.debug else "")
 
     def log_line_prefix(self) -> str:
         """ compile prefix of log print-out line for this :class:`AppBase` instance.
@@ -1160,7 +1160,7 @@ class AppBase:
         if stream:
             if self._log_file_stream:
                 self._append_eof_and_flush_file(stream, "ae log buf")
-                buf = stream.getvalue() + ("\n####  End Of Log Buffer" if self.debug else "")
+                buf = stream.getvalue() + ("\n  ^^  End Of Log Buffer" if self.debug else "")
                 self._log_file_stream.write(buf)
             self._log_buf_stream = None
             stream.close()

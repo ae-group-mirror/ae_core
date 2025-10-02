@@ -450,18 +450,19 @@ class TestPythonLogging:
             cae.po(log_text)
         finally:
             logging.shutdown()
+            # empty log file created in log_init, and gets not extended by the above cae.po() call
             files_contents = delete_files(log_file, ret_type='contents')
             assert len(files_contents) == 1
             assert files_contents[0] == ""
-            # FIXME?!?!? empty log file created in log_init gets not extended by the above cae.po() call
 
         try:
             log_text = entry_prefix + "0 print_out root"
             cae.po(log_text, logger=root_logger)
         finally:
             logging.shutdown()
-            # grm-pytest-run: assert delete_files(log_file) == 0 FIXME?!?!?
-            # pycharm-pytest-run: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            files_contents = delete_files(log_file, ret_type='contents')
+            assert len(files_contents) == 1
+            assert files_contents[0].endswith(log_text + os.linesep)
 
         try:
             log_text = entry_prefix + "0 print_out ae"
