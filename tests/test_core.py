@@ -406,10 +406,10 @@ class TestPythonLogging:
         """ test logging with rotating file handler, first refactored migrated from
 
         TODO: investigate and fix the 4 commented out asserts in this test method
-        .. which found log_text via `grm check` pytest in console as well as in pycharm pytest run
-        .. but in this test module (test_core.py) only the grm/pytest run does not find log_text/log_files at all!
+        .. which found log_text via `pjm check` pytest in console as well as in pycharm pytest run
+        .. but in this test module (test_core.py) only the pjm/pytest run does not find log_text/log_files at all!
         .. or shows them accumulated in a later test
-        Strange: a very similar test method did run fine with grm&pycharm in ae_console/tests/test_console.py (v0.3.63)
+        Strange: a very similar test method did run fine with pjm&pycharm in ae_console/tests/test_console.py (v0.3.63)
 
         Looks like the problem lies in pytest (previous version done with caplog had also empty .text)
         .. but also in PyCharm, see:
@@ -501,7 +501,7 @@ class TestPythonLogging:
             logging.warning(log_text)
         finally:
             logging.shutdown()
-            # grm: assert delete_files(log_file) == 0
+            # pjm: assert delete_files(log_file) == 0
             # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
@@ -509,7 +509,7 @@ class TestPythonLogging:
             logging.error(log_text)
         finally:
             logging.shutdown()
-            # grm: assert delete_files(log_file) == 0
+            # pjm: assert delete_files(log_file) == 0
             # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         # loggers
@@ -518,7 +518,7 @@ class TestPythonLogging:
             root_logger.error(log_text)
         finally:
             logging.shutdown()
-            # grm: assert delete_files(log_file) == 0
+            # pjm: assert delete_files(log_file) == 0
             # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
@@ -526,8 +526,8 @@ class TestPythonLogging:
             ae_logger.error(log_text)
         finally:
             logging.shutdown()
-            # grm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
-            # grm+pycharm: delete_files returns 5 files (this one 2*, all the before missing ones & wrong ordered)?!?!?
+            # pjm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            # pjm+pycharm: delete_files returns 5 files (this one 2*, all the before missing ones & wrong ordered)?!?!?
             assert log_text + os.linesep in delete_files(log_file, ret_type='contents')
 
         try:

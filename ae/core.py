@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.75'
+__version__ = '0.3.76'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -743,7 +743,7 @@ class AppBase:
             self._init_path_placeholders()              # .. then init PATH_PLACEHOLDERS
 
             app_path, cwd_path = norm_path(app_path), norm_path(os.getcwd())
-            if app_path == cwd_path:                    # if this app is not a dev-tool/grm # pragma: no cover
+            if app_path == cwd_path:                    # if this app is not a dev-tool/pjm # pragma: no cover
                 destination_files = check_all()         # then prepare the app on first-run after install/ubgrade
                 self.vpo(f"AppBase.__init__() updated {len(destination_files)} {destination_files=}")
             else:                                                                           # pragma: no cover
@@ -759,7 +759,7 @@ class AppBase:
         add_common_storage_paths()  # determine platform-specific path placeholders, like e.g. {pictures}, {documents}..
 
         # to unmask in :meth:`ae.core.AppBase.__init__`/:meth:`ae.updater.check_all` the masked .apk extension of the
-        # APK, embedded via grm-build_gui_app action, because buildozer/p4a does not embed it having an .apk extension
+        # APK, embedded via pjm-build_gui_app action, because buildozer/p4a does not embed it having an .apk extension
         if os_platform == 'android':    # only needed for APKs on Android OS; not needed for AAR app packages
             PATH_PLACEHOLDERS['apk_ext'] = 'apk'                                            # pragma: no cover
 
