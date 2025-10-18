@@ -23,15 +23,15 @@ setup_kwargs = {
     'install_requires': ['ae_base', 'ae_paths', 'ae_updater'],
     'keywords': ['configuration', 'development', 'environment', 'productivity'],
     'license': 'GPL-3.0-or-later',
-    'long_description': ('<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae v0.3.100 -->\n'
- '<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.namespace_root_tpls v0.3.21 -->\n'
- '# core 0.3.76\n'
+    'long_description': ('<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae v0.3.101 -->\n'
+ '<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.namespace_root_tpls v0.3.22 -->\n'
+ '# core 0.3.77\n'
  '\n'
  '[![GitLab develop](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/develop?logo=python)](\n'
  '    https://gitlab.com/ae-group/ae_core)\n'
  '[![LatestPyPIrelease](\n'
- '    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.76?logo=python)](\n'
- '    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.76)\n'
+ '    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.77?logo=python)](\n'
+ '    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.77)\n'
  '[![PyPIVersions](https://img.shields.io/pypi/v/ae_core)](\n'
  '    https://pypi.org/project/ae-core/#history)\n'
  '\n'
@@ -108,7 +108,7 @@ setup_kwargs = {
         'Source': 'https://ae.readthedocs.io/en/latest/_modules/ae/core.html'},
     'python_requires': '>=3.9',
     'url': 'https://gitlab.com/ae-group/ae_core',
-    'version': '0.3.76',
+    'version': '0.3.77',
     'zip_safe': True,
 }
 

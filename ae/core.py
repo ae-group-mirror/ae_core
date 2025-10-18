@@ -242,7 +242,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.76'
+__version__ = '0.3.77'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -1066,6 +1066,8 @@ class AppBase:
         force = is_main_app_instance and exit_code              # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
+            if not (0 <= exit_code <= 255):
+                self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
             self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
         # pylint: disable-next=consider-using-with
