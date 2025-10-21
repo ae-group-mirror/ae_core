@@ -218,6 +218,7 @@ application code.
 .. _debug-level-constants:
 
 """
+# pylint: disable=too-many-lines
 import datetime
 import faulthandler
 import logging
@@ -230,7 +231,7 @@ import traceback
 import weakref
 
 from io import StringIO
-from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Union, cast
+from typing import Any, Callable, Optional, TextIO, Union, cast
 
 from ae.base import (                                                                                   # type: ignore
     BUILD_CONFIG_FILE, DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
@@ -242,7 +243,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.77'
+__version__ = '0.3.78'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -268,7 +269,7 @@ if os_platform == 'android':  # pragma: no cover
     from android.permissions import request_permissions, Permission     # type: ignore # pylint: disable=import-error
     from jnius import autoclass                                         # type: ignore
 
-    def request_app_permissions(callback: Optional[Callable[[List[Permission], List[bool]], None]] = None):
+    def request_app_permissions(callback: Optional[Callable[[list[Permission], list[bool]], None]] = None):
         """ request app/service permissions on Android OS.
 
         :param callback:        optional callback receiving two list arguments with identical length,
@@ -321,11 +322,13 @@ DEBUG_LEVEL_DISABLED: int = 0       #: lowest debug level - only display logging
 DEBUG_LEVEL_ENABLED: int = 1        #: minimum debugging info - display logging levels WARNING or higher.
 DEBUG_LEVEL_VERBOSE: int = 2        #: verbose debug info - display logging levels INFO/DEBUG or higher.
 
-DEBUG_LEVELS: Dict[int, str] = {DEBUG_LEVEL_DISABLED: 'disabled', DEBUG_LEVEL_ENABLED: 'enabled',
+DEBUG_LEVELS: dict[int, str] = {DEBUG_LEVEL_DISABLED: 'disabled',
+                                DEBUG_LEVEL_ENABLED: 'enabled',
                                 DEBUG_LEVEL_VERBOSE: 'verbose'}
 """ numeric ids and names of all supported debug levels. """
 
-LOGGING_LEVELS: Dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.WARNING, DEBUG_LEVEL_ENABLED: logging.INFO,
+LOGGING_LEVELS: dict[int, int] = {DEBUG_LEVEL_DISABLED: logging.WARNING,
+                                  DEBUG_LEVEL_ENABLED: logging.INFO,
                                   DEBUG_LEVEL_VERBOSE: logging.DEBUG}
 """ association between ae debug levels and python logging levels. """
 
@@ -367,6 +370,13 @@ def logger_late_init():
         _LOGGER = logging.getLogger(__name__)           # reset (_LOGGER = None) done in _unregister_app_instance()
 
 
+def logger_shutdown():
+    """ reset logger and logging module. """
+    global _LOGGER                                      # pylint: disable=global-statement
+    _LOGGER = None
+    logging.shutdown()
+
+
 _MULTI_THREADING_ACTIVATED: bool = False                #: flag if threading is used in your application
 
 
@@ -382,6 +392,7 @@ def _deactivate_multi_threading():
     _MULTI_THREADING_ACTIVATED = False
 
 
+# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
 def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] = None, flush: bool = False,
               encode_errors_def: str = DEF_ENCODE_ERRORS, logger: Optional['logging.Logger'] = None,
               app: Optional['AppBase'] = None, **kwargs):
@@ -427,6 +438,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     else:
         app = main_app
 
+    # pylint: disable=too-many-boolean-expressions
     if processing:
         file = ori_std_out
     elif logger is not None and file is None and (
@@ -477,6 +489,42 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
             break
 
 
+def debug_out(*objects, **kwargs):
+    """ print out if debug mode is enabled. if app instance is available, then use :meth:`AppBase.debug_out` instead.
+
+    :param objects:             see argument description of :meth:`AppBase.debug_out`.
+    :param kwargs:              see argument description of :meth:`AppBase.debug_out`.
+    """
+    getattr(main_app_instance(), 'debug_out', print_out)(*objects, **kwargs)
+
+
+def verbose_out(*objects, **kwargs):
+    """ print out if verbose debug mode is enabled. if app instance is available, then use :meth:`AppBase.verbose_out`.
+
+    :param objects:             see argument description of :meth:`AppBase.verbose_out`.
+    :param kwargs:              see argument description of :meth:`AppBase.verbose_out`.
+    """
+    getattr(main_app_instance(), 'verbose_out', print_out)(*objects, **kwargs)
+
+
+def is_debug() -> bool:
+    """ determine if the debug level of the main app instance is set/enabled.
+
+    :return:                    True if the debugging of the main app instance is enabled or if the app main instance
+                                did not get registered, else False (main app instance exists, but no debugging enabled).
+    """
+    return getattr(main_app_instance(), 'debug', True)
+
+
+def is_verbose() -> bool:
+    """ determine if the verbose debug level of the main app instance is set/enabled.
+
+    :return:                    True if the debugging of the main app instance is enabled or if the app main instance
+                                did not get registered, else False (main app exists, but no verbose debugging enabled).
+    """
+    return getattr(main_app_instance(), 'verbose', True)
+
+
 APP_KEY_SEP: str = '@'      #: separator character used in :attr:`~AppBase.app_key` of :class:`AppBase` instance
 
 # had to use type comment because the following line is throwing an error in the Sphinx docs make:
@@ -505,7 +553,7 @@ def main_app_instance() -> Optional['AppBase']:
         return _APP_INSTANCES.get(_MAIN_APP_INST_KEY)
 
 
-def registered_app_names() -> List[str]:
+def registered_app_names() -> list[str]:
     """ determine the app names of all registered/running applications. """
     with app_inst_lock:
         return [app.app_name for app in _APP_INSTANCES.values()]
@@ -541,8 +589,7 @@ def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
     :return:                    removed :class:`AppBase` instance.
     """
     with app_inst_lock:
-        global _LOGGER                                  # pylint: disable=global-statement
-        _LOGGER = None
+        logger_shutdown()
 
         global _MAIN_APP_INST_KEY                       # pylint: disable=global-statement
         app = _APP_INSTANCES.pop(app_key, None)
@@ -563,7 +610,7 @@ def _shut_down_sub_app_instances(timeout: Optional[float] = None):
                                 acquisition of the threading locks of :data:`the ae log file <log_file_lock>` and the
                                 :data:`app instances <app_inst_lock>`.
     """
-    aqc_kwargs: Dict[str, Any] = ({'blocking': False} if timeout is None else {'timeout': timeout})
+    aqc_kwargs: dict[str, Any] = ({'blocking': False} if timeout is None else {'timeout': timeout})
     blocked = app_inst_lock.acquire(**aqc_kwargs)           # pylint: disable=consider-using-with
     for app in reversed(list(_APP_INSTANCES.values())):     # list() because the weak ref dict gets changed in the loop
         if not app.is_main:
@@ -591,7 +638,7 @@ class _PrintingReplicator:
         :param any_str:         string or bytes to output.
         """
         message = any_str.decode() if isinstance(any_str, bytes) else any_str
-        app_streams: List[Tuple[Optional[AppBase], TextIO]] = []
+        app_streams: list[tuple[Optional[AppBase], TextIO]] = []
         with log_file_lock, app_inst_lock:
             for app in list(_APP_INSTANCES.values()):
                 stream = app.log_file_check(app.active_log_stream)  # check if log rotation or buf-to-file-switch needed
@@ -649,7 +696,7 @@ def _join_app_threads(timeout: Optional[float] = None):
     _deactivate_multi_threading()
 
 
-class AppBase:
+class AppBase:  # pylint: disable=too-many-instance-attributes
     """ provides easy logging and debugging for your application.
 
     most applications only need a single instance of this class; apps with threads could create separate instances
@@ -693,9 +740,10 @@ class AppBase:
     _log_file_name: str = ""                        #: log file name
     _log_with_timestamp: Union[bool, str] = False   #: True of strftime format string to enable timestamp
     _nul_std_out: Optional[TextIO] = None           #: logging null stream
-    py_log_params: Dict[str, Any] = {}              #: dict of config parameters for py logging
+    py_log_params: dict[str, Any] = {}              #: dict of config parameters for py logging
     _shut_down: bool = False                        #: True if this app instance got shut down already
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(self, app_title: str = '', app_name: str = '', app_version: str = '', sys_env_id: str = '',
                  debug_level: int = DEBUG_LEVEL_VERBOSE, multi_threading: bool = False, suppress_stdout: bool = False):
         """ initialize a new :class:`AppBase` instance.
@@ -749,7 +797,7 @@ class AppBase:
             else:                                                                           # pragma: no cover
                 self.vpo(f"AppBase.__init__() upgrade check skipped because {app_path=} != {cwd_path=}")
 
-    def _init_path_placeholders(self):
+    def _init_path_placeholders(self):  # pylint: disable=too-many-locals
         """ correct app_name/main_app_name, the related path placeholders and ensure write access for some of them. """
         # correct app name guess, init by :mod:`ae.paths` (main app from ("", 'pyTstConsAppKey', '_jb_pytest_runner'))
         PATH_PLACEHOLDERS['main_app_name'] = PATH_PLACEHOLDERS['app_name'] = app_name = self.app_name
@@ -881,7 +929,8 @@ class AppBase:
 
         return None
 
-    def init_logging(self, py_logging_params: Optional[Dict[str, Any]] = None, log_file_name: str = "",
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def init_logging(self, py_logging_params: Optional[dict[str, Any]] = None, log_file_name: str = "",
                      log_file_size_max: float = LOG_FILE_MAX_SIZE, log_with_timestamp: Union[bool, str] = False,
                      disable_buffering: bool = False):
         """ initialize the logging system.
@@ -1000,7 +1049,7 @@ class AppBase:
         :param kwargs:          all the other supported kwargs of this method are documented
                                 :func:`at the print_out() function of this module <print_out>`.
 
-        this method has an alias named :meth:`.po`
+        .. hint:: this method has an alias named :meth:`.po`
         """
         if file is None and main_app_instance() is not self:    # self.is_main==True when main_app_instance() is None
             with log_file_lock:
@@ -1013,23 +1062,16 @@ class AppBase:
 
     po = print_out          #: alias of method :meth:`.print_out`
 
-    def debug_out(self, *objects, minimum_debug_level: int = DEBUG_LEVEL_ENABLED, **kwargs):
-        """ special debug version of :func:`builtin print() function <print>`.
-
-        this method will print out the passed objects only if the :attr:`current debug level
-        <.core.AppBase.debug_level>` of this app instance is higher than the value passed into the
-        :paramref:`~debug_out.minimum_debug_level` argument. in this case the print-out will be
-        delegated onto the :meth:`~.print_out`.
+    def debug_out(self, *objects, **kwargs):
+        """ print objects if :attr:`the current debug level <.core.AppBase.debug_level>`of this app instance is enabled.
 
         :param objects:             objects to be printed out.
-        :param minimum_debug_level: minimum debug level to print the passed objects.
         :param kwargs:              all the supported kwargs of this method are documented at the
-                                    :func:`print_out() function <core.print_out>` of the :mod:`~ae.core` module
-                                    (including the :paramref:`~.print_out.file` argument).
+                                    :func:`print_out() function <core.print_out>`.
 
-        this method has an alias named :meth:`.dpo`.
+        .. hint:: this method has an alias named :meth:`.dpo`.
         """
-        if self.debug_level >= minimum_debug_level:
+        if self.debug_level >= DEBUG_LEVEL_ENABLED:
             self.po(*objects, **kwargs)
 
     dpo = debug_out         #: alias of method :meth:`.debug_out`
@@ -1043,7 +1085,7 @@ class AppBase:
                                 supported kwargs of this method are documented at the
                                 :func:`print_out() function <~ae.core.print_out>` of the :mod:`~.core` module.
 
-        this method has an alias named :meth:`.vpo`.
+        .. hint:: this method has an alias named :meth:`.vpo`.
         """
         if self.debug_level >= DEBUG_LEVEL_VERBOSE:
             self.po(*objects, **kwargs)
@@ -1061,12 +1103,12 @@ class AppBase:
         """
         if self._shut_down:
             return
-        aqc_kwargs: Dict[str, Any] = {'blocking': False} if timeout is None else {'timeout': timeout}
+        aqc_kwargs: dict[str, Any] = {'blocking': False} if timeout is None else {'timeout': timeout}
         is_main_app_instance = main_app_instance() is self      # self.is_main==True when main_app_instance() is None
         force = is_main_app_instance and exit_code              # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
-            if not (0 <= exit_code <= 255):
+            if not 0 <= exit_code <= 255:
                 self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
             self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
@@ -1121,7 +1163,9 @@ class AppBase:
                 else:
                     # pylint: disable-next=unspecified-encoding, consider-using-with
                     std_out = self._nul_std_out = open(os.devnull, 'w')
+                # noinspection PyInvalidCast
                 sys.stdout = cast(TextIO, _PrintingReplicator(sys_out_obj=std_out))
+                # noinspection PyInvalidCast
                 sys.stderr = cast(TextIO, _PrintingReplicator(sys_out_obj=ori_std_err))
         else:
             if is_main_app_instance:

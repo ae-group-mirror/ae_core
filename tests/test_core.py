@@ -12,23 +12,53 @@ from typing import cast, Any, TextIO
 from unittest.mock import patch
 
 
-from ae.base import DATE_TIME_ISO, force_encoding, norm_path, read_file, write_file
+import ae.paths                 # for patch tests of ae.paths.PATH_PLACEHOLDERS
+import ae.core                  # for patch tests of ae.core.PATH_PLACEHOLDERS
+
+from ae.base import (
+    DATE_TIME_ISO, force_encoding, norm_path, os_path_dirname, os_path_isfile, os_path_splitext, read_file, write_file)
 from ae.paths import PATH_PLACEHOLDERS, placeholder_path, coll_folders, Collector
 # noinspection PyProtectedMember
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE,
     LOG_FILE_IDX_WIDTH, MAX_NUM_LOG_FILES,
     activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
+    debug_out, verbose_out, is_debug, is_verbose,
     registered_app_names,
     AppBase, _PrintingReplicator)
-import ae.paths                 # for patch tests of ae.paths.PATH_PLACEHOLDERS
-import ae.core                  # for patch tests of ae.core.PATH_PLACEHOLDERS
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
 
 
 class TestCoreHelpers:
+    def test_debug_out(self, capsys, restore_app_env):
+        app = AppBase()
+        app.debug_level = DEBUG_LEVEL_VERBOSE
+
+        debug_out('tst console output')
+
+        out, err = capsys.readouterr()
+        assert 'tst console output' in out
+        assert err == ""
+
+        app.debug_level = DEBUG_LEVEL_ENABLED
+
+        debug_out('tst console output')
+
+        out, err = capsys.readouterr()
+        assert 'tst console output' in out
+        assert err == ""
+
+        app.debug_level = DEBUG_LEVEL_DISABLED
+
+        debug_out('tst console output')
+
+        out, err = capsys.readouterr()
+        assert 'tst console output' not in out
+        assert out == ""
+        assert err == ""
+
     def test_hide_dup_line_prefix(self):
         l1 = "<t_s_t>"
         l2 = l1
@@ -38,6 +68,34 @@ class TestCoreHelpers:
         assert hide_dup_line_prefix(l2, l1) == " " * len(l1)
         l2 = l1[:3] + l1
         assert hide_dup_line_prefix(l1, l2) == " " * 3 + l1
+
+    def test_is_debug(self, restore_app_env):
+        app = AppBase()
+        app.debug_level = DEBUG_LEVEL_DISABLED
+
+        assert not is_debug()
+
+        app.debug_level = DEBUG_LEVEL_ENABLED
+
+        assert is_debug()
+
+        app.debug_level = DEBUG_LEVEL_VERBOSE
+
+        assert is_debug()
+
+    def test_is_verbose(self, restore_app_env):
+        app = AppBase()
+        app.debug_level = DEBUG_LEVEL_DISABLED
+
+        assert not is_verbose()
+
+        app.debug_level = DEBUG_LEVEL_ENABLED
+
+        assert not is_verbose()
+
+        app.debug_level = DEBUG_LEVEL_VERBOSE
+
+        assert is_verbose()
 
     def test_print_out_basics(self, capsys):
         print_out()
@@ -84,6 +142,34 @@ class TestCoreHelpers:
         app = AppBase()
         assert len(registered_app_names()) == 1
         assert app.app_name == registered_app_names()[0]
+
+    def test_verbose_out(self, capsys, restore_app_env):
+        app = AppBase()
+        app.debug_level = DEBUG_LEVEL_VERBOSE
+
+        verbose_out('tst console output')
+
+        out, err = capsys.readouterr()
+        assert 'tst console output' in out
+        assert err == ""
+
+        app.debug_level = DEBUG_LEVEL_ENABLED
+
+        verbose_out('tst console output')
+
+        out, err = capsys.readouterr()
+        assert 'tst console output' not in out
+        assert out == ""
+        assert err == ""
+
+        app.debug_level = DEBUG_LEVEL_DISABLED
+
+        verbose_out('tst console output')
+
+        out, err = capsys.readouterr()
+        assert 'tst console output' not in out
+        assert out == ""
+        assert err == ""
 
 
 class TestPrintingReplicator:
@@ -149,7 +235,7 @@ class TestAeLogging:
             for idx in range(MAX_NUM_LOG_FILES + 9):
                 for line_no in range(16):                   # full loop is creating 1 kB of log entries (16 * 64 bytes)
                     app.po("TestBaseLogEntry{: >26}{: >26}".format(idx, line_no))
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
         finally:
             assert delete_files(log_file, keep_ext=True) == MAX_NUM_LOG_FILES + 1
 
@@ -157,7 +243,7 @@ class TestAeLogging:
         log_file = 'test_ae_cov_log.log'
         valid_log_content = "TestBaseLogEntry"
         invalid_log_content = "NeverAppearInLogFile"
-        fb, ext = os.path.splitext(log_file)    # simulate a left-over log file from the last app run - coverage
+        fb, ext = os_path_splitext(log_file)    # simulate a left-over log file from the last app run - coverage
         idx = 1
         write_file(f"{fb}-{idx:0>{LOG_FILE_IDX_WIDTH}}{ext}",
                    f"log file content to test left-over from last app run{invalid_log_content}")
@@ -167,7 +253,7 @@ class TestAeLogging:
             for idx in range(MAX_NUM_LOG_FILES + 9):
                 for line_no in range(16):                   # full loop is creating 1 kB of log entries (16 * 64 bytes)
                     app.po(f"{valid_log_content}{idx: >26}{line_no: >26}")
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
         finally:
             contents = delete_files(log_file, keep_ext=True, ret_type='contents')
             assert len(contents) == MAX_NUM_LOG_FILES + 1
@@ -187,7 +273,7 @@ class TestAeLogging:
             for idx in range(MAX_NUM_LOG_FILES + 9):
                 for line_no in range(16):
                     app.po("TestBaseLogEntry{: >26}{: >26}".format(idx, line_no))
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
         finally:
             assert delete_files(log_file, keep_ext=True) == MAX_NUM_LOG_FILES + 1
 
@@ -201,7 +287,7 @@ class TestAeLogging:
             for idx in range(MAX_NUM_LOG_FILES + 9):
                 for line_no in range(16):
                     app.po("TestBaseLogEntry{: >26}{: >26}".format(idx, line_no))
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
         finally:
             assert delete_files(log_file, keep_ext=True) == MAX_NUM_LOG_FILES + 1
 
@@ -216,7 +302,7 @@ class TestAeLogging:
             out, err = capsys.readouterr()
             assert out == "" and err == ""
             app.init_logging()      # close the log file
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
             out, err = capsys.readouterr()
             assert out == "" and err == ""
         finally:
@@ -237,7 +323,7 @@ class TestAeLogging:
             out, err = capsys.readouterr()
             assert out == "" and err == ""
             app.init_logging()      # close the log file
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
             out, err = capsys.readouterr()
             assert out == "" and err == ""
         finally:
@@ -251,7 +337,7 @@ class TestAeLogging:
         app.init_logging(log_file_name=log_file)
         with pytest.raises(FileNotFoundError):
             app.log_file_check()     # coverage of callee exception
-        assert not os.path.exists(log_file)
+        assert not os_path_isfile(log_file)
 
     def test_log_file_flush(self, restore_app_env):
         log_file = 'test_ae_base_log_flush.log'
@@ -259,7 +345,7 @@ class TestAeLogging:
             app = AppBase('test_base_log_file_flush')
             app.init_logging(log_file_name=log_file)
             app.log_file_check()
-            assert os.path.exists(log_file)
+            assert os_path_isfile(log_file)
         finally:
             assert delete_files(log_file) == 1
 
@@ -281,8 +367,8 @@ class TestAeLogging:
             # NOT WORKING: capsys.readouterr() returning empty strings
             # out, err = capsys.readouterr()
             # assert out.count(tst_out) == 3 and err == ""
-            assert os.path.exists(mp + log_file)
-            assert os.path.exists(sp + log_file)
+            assert os_path_isfile(mp + log_file)
+            assert os_path_isfile(sp + log_file)
         finally:
             contents = delete_files(sp + log_file, ret_type='contents')
             assert len(contents)
@@ -323,8 +409,8 @@ class TestAeLogging:
             sub.init_logging()          # close the sub-app log file created by sub_thread
             sub_thread.join()
             app.init_logging()          # close the main-app log file
-            assert os.path.exists(sp + log_file)
-            assert os.path.exists(mp + log_file)
+            assert os_path_isfile(sp + log_file)
+            assert os_path_isfile(mp + log_file)
         finally:
             contents = delete_files(sp + log_file, ret_type='contents')
             assert len(contents)
@@ -340,6 +426,7 @@ class TestAeLogging:
     def test_exception_log_file_flush(self, restore_app_env):
         app = AppBase('test_exception_base_log_file_flush')
         # cause/provoke _append_eof_and_flush_file() exceptions for coverage by passing any other non-stream object
+        # noinspection PyInvalidCast
         app._append_eof_and_flush_file(cast(TextIO, None), 'invalid stream')
 
     def test_app_instances_reset2(self):
@@ -350,46 +437,40 @@ class TestPythonLogging:
     """ test python logging module support
     """
     def test_log_init(self, restore_app_env):
-        var_val = dict(version=1,
-                       disable_existing_loggers=False)
+        var_val = {'version': 1,
+                   'disable_existing_loggers': False}
         app = AppBase('log_init')
         app.init_logging(py_logging_params=var_val)
 
         assert app.py_log_params == var_val
 
-        logging.shutdown()
-
     def test_app_instances_reset1(self):
         assert main_app_instance() is None
 
     def test_logging_params_dict_console_from_init(self, restore_app_env):
-        var_val = dict(version=1,
-                       disable_existing_loggers=False,
-                       handlers=dict(console={'class': 'logging.StreamHandler',
-                                              'level': logging.INFO}))
+        var_val = {'version': 1,
+                   'disable_existing_loggers': False,
+                   'handlers': {'console': {'class': 'logging.StreamHandler',
+                                            'level': logging.INFO}}}
         print(str(var_val))
 
         main_app = AppBase('test_python_logging_params_dict_console')
         main_app.init_logging(py_logging_params=var_val)
 
         assert main_app.py_log_params == var_val
-        logging.shutdown()
 
     def test_logging_params_dict_console_from_init_with_log_file(self, restore_app_env):
         log_file = 'tst_py_log_complex.log'
-        entry_prefix = "TST LOG ENTRY "
-
-        var_val = dict(version=1,
-                       disable_existing_loggers=False,
-                       handlers=dict(console={'class': 'logging.handlers.RotatingFileHandler',
-                                              'level': logging.INFO,
-                                              'filename': log_file,
-                                              'maxBytes': 33,
-                                              'backupCount': 63}),
-                       loggers={'root': dict(handlers=['console']),
-                                'ae': dict(handlers=['console']),
-                                'ae.console': dict(handlers=['console'])}
-                       )
+        var_val = {'version': 1,
+                   'disable_existing_loggers': False,
+                   'handlers': {'console': {'class': 'logging.handlers.RotatingFileHandler',
+                                            'level': logging.INFO,
+                                            'filename': log_file,
+                                            'maxBytes': 33,
+                                            'backupCount': 63}},
+                   'loggers': {'root': {'handlers': ['console']},
+                               'ae': {'handlers': ['console']},
+                               'ae.console': {'handlers': ['console']}}}
         print(str(var_val))
 
         cae = AppBase('test_python_logging_params_dict_file', debug_level=DEBUG_LEVEL_DISABLED)
@@ -397,42 +478,24 @@ class TestPythonLogging:
 
         assert cae.py_log_params == var_val
 
-        # logging.shutdown()     TODO: encapsulate with _LOGGER = None into new method reset_logging() and add it to restore_app_env fixture ?!?!?
-
         # empty log file created by logging.config.dictConfig(py_logging_params) in :func:`ae.core.AppBase.init_logging`
         assert delete_files(log_file, ret_type='contents')[0] == ""
 
     def test_logging_params_dict_complex(self, restore_app_env):
-        """ test logging with rotating file handler, first refactored migrated from
-
-        TODO: investigate and fix the 4 commented out asserts in this test method
-        .. which found log_text via `pjm check` pytest in console as well as in pycharm pytest run
-        .. but in this test module (test_core.py) only the pjm/pytest run does not find log_text/log_files at all!
-        .. or shows them accumulated in a later test
-        Strange: a very similar test method did run fine with pjm&pycharm in ae_console/tests/test_console.py (v0.3.63)
-
-        Looks like the problem lies in pytest (previous version done with caplog had also empty .text)
-        .. but also in PyCharm, see:
-
-        * https://stackoverflow.com/questions/59875983
-        * https://github.com/pytest-dev/pytest/issues/3697
-        * https://youtrack.jetbrains.com/issue/PY-48743/Running-Pytest-is-not-showing-logging-output
-
-        """
+        """ test logging with rotating file handler. """
         log_file = 'test_py_log_complex.log'
         entry_prefix = "TEST LOG ENTRY "
 
-        var_val = dict(version=1,
-                       disable_existing_loggers=False,
-                       handlers=dict(console={'class': 'logging.handlers.RotatingFileHandler',
-                                              'level': logging.INFO,
-                                              'filename': log_file,
-                                              'maxBytes': 33,
-                                              'backupCount': 63}),
-                       loggers={'root': dict(handlers=['console']),
-                                'ae': dict(handlers=['console']),
-                                'ae.core': dict(handlers=['console'])}
-                       )
+        var_val = {'version': 1,
+                   'disable_existing_loggers': False,
+                   'handlers': {'console': {'class': 'logging.handlers.RotatingFileHandler',
+                                            'level': logging.INFO,
+                                            'filename': log_file,
+                                            'maxBytes': 33,
+                                            'backupCount': 63}},
+                   'loggers': {'root': {'handlers': ['console']},
+                               'ae': {'handlers': ['console']},
+                               'ae.core': {'handlers': ['console']}}}
         print(str(var_val))
 
         cae = AppBase('test_python_logging_params_dict_file', debug_level=DEBUG_LEVEL_DISABLED)
@@ -503,6 +566,7 @@ class TestPythonLogging:
             logging.shutdown()
             # pjm: assert delete_files(log_file) == 0
             # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
             log_text = entry_prefix + "4 error logging"
@@ -511,6 +575,7 @@ class TestPythonLogging:
             logging.shutdown()
             # pjm: assert delete_files(log_file) == 0
             # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         # loggers
         try:
@@ -520,6 +585,7 @@ class TestPythonLogging:
             logging.shutdown()
             # pjm: assert delete_files(log_file) == 0
             # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
             log_text = entry_prefix + "4 error ae"
@@ -540,15 +606,16 @@ class TestPythonLogging:
         # AppBase.debug_out/.dpo
         sys.argv = ['tl_cdc']  # sys.argv has to be set to allow get_option('debug_level') calls done by debug_out()
         try:
-            log_text = entry_prefix + "5 not logged dpo"
-            cae.dpo(log_text, minimum_debug_level=DEBUG_LEVEL_DISABLED)
+            log_text = entry_prefix + "5 not logged debug_out/dpo"
+            cae.dpo(log_text)
         finally:
             logging.shutdown()
             assert delete_files(log_file) == 0
 
+        # AppBase.print_out/.po
         try:
-            log_text = entry_prefix + "5 dpo"
-            cae.dpo(log_text, minimum_debug_level=DEBUG_LEVEL_DISABLED, logger=ae_cae_logger)
+            log_text = entry_prefix + "5 print_out/po"
+            cae.po(log_text, logger=ae_cae_logger)
         finally:
             logging.shutdown()
             assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
@@ -579,7 +646,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         app = AppBase(title, app_version=ver)
         assert app.app_title == title
         assert app.app_version == ver
-        assert app.app_path == norm_path(os.path.dirname(sys.argv[0]))
+        assert app.app_path == norm_path(os_path_dirname(sys.argv[0]))
 
     def test_app_find_version(self, restore_app_env):
         app = AppBase()
@@ -604,7 +671,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
 
         _instance = _OtherClass()
         t_args = (1, 2, '3')
-        t_kwargs = dict(a=1, b=2, c='3')
+        t_kwargs = {'a': 1, 'b': 2, 'c': '3'}
         assert app.call_method(_instance._method, *t_args, **t_kwargs) == (_instance, t_args, t_kwargs)
 
     def test_call_method_no_exception_if_not_exists(self, restore_app_env):
@@ -647,6 +714,12 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             raise ValueError
         setattr(app, 'test_raiser', _raising_ex)
         app.call_method('test_raiser')
+
+    def test_debug_out(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
+        tst = "tsT-debug-out-string"
+        app.debug_out(tst)
+        assert tst in capsys.readouterr()[0]
 
     def test_init_path_placeholders(self, restore_app_env):
         cae = AppBase("test_init_path_placeholders")
@@ -781,15 +854,45 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
     def test_app_instances_reset2(self):
         assert main_app_instance() is None
 
+    def test_shutdown_none(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_DISABLED)
+
+        with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
+            app.shutdown(None)
+
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert err == ""
+
+    def test_shutdown_0(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
+
+        with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
+            app.shutdown()  # exit_code == 0
+
+        out, err = capsys.readouterr()
+        assert 'shutdown of ' in out
+        assert err == ""
+
+    def test_shutdown_1(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_VERBOSE)
+
+        with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
+            app.shutdown(1)
+
+        assert 'shutdown of ' in capsys.readouterr()[0]
+
+    def test_shutdown_123456(self, capsys, restore_app_env):
+        app = AppBase()
+
+        with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
+            app.shutdown(123456)    # test warning if exit code is not in 0..255
+
+        assert 'extended exit code' in capsys.readouterr()[0]
+
     def test_verbose(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_VERBOSE)
         assert app.verbose
-
-    def test_debug_out(self, capsys, restore_app_env):
-        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
-        tst = "tsT-debug-out-string"
-        app.debug_out(tst)
-        assert tst in capsys.readouterr()[0]
 
     def test_verbose_out(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
