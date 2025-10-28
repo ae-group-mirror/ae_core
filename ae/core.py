@@ -55,7 +55,7 @@ base class for main- and sub-app threads
 to apply logging and debugging features to your application, at least one instance of the
 class :class:`~ae.core.AppBase`, provided by this portion, has to be created. only the first instance
 of this class created at run-time represents the main application thread, having the value `True`
-in its app instance property :attr:`~ae.core.AppBase.is_main`.
+in its app instance property :attr:`~ae.core.AppBase.is_main_app`.
 
 additional sub-app instances of :class:`~ae.core.AppBase` can be created if your app needs separate
 logging/debugging configuration for one of their sub-threads (e.g., for
@@ -243,7 +243,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.78'
+__version__ = '0.3.79'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -256,10 +256,10 @@ if os_path_isfile(BUILD_CONFIG_FILE):                           # pragma: no cov
         ('package.domain', PACKAGE_DOMAIN),
         ('android.permissions', PERMISSIONS))
 elif os_platform == 'android':                                  # pragma: no cover
-    _importing_package = norm_path(stack_var('__file__') or 'empty_package' + PY_EXT)
-    if os_path_basename(_importing_package) in (PY_INIT, PY_MAIN):
-        _importing_package = os_path_dirname(_importing_package)
-    _importing_package = os_path_splitext(os_path_basename(_importing_package))[0]
+    _importing_main_name = norm_path(stack_var('__file__') or 'incomplete_main_file' + PY_EXT)
+    if os_path_basename(_importing_main_name) in (PY_INIT, PY_MAIN):
+        _importing_main_name = os_path_dirname(_importing_main_name)
+    _importing_package = os_path_splitext(os_path_basename(_importing_main_name))[0]
     write_file(f'{_importing_package}_debug.log', f"{BUILD_CONFIG_FILE} not bundled - using defaults\n", extra_mode='a')
 
 
@@ -535,7 +535,7 @@ _APP_INSTANCES = weakref.WeakValueDictionary()   # type: weakref.WeakValueDictio
 gets automatically initialized in :meth:`AppBase.__init__` to allow log file split/rotation
 and debug_level access at application thread or module level.
 
-the first created :class:`AppBase` instance is called the main app instance. :data:`_MAIN_APP_INST_KEY`
+the first created :class:`AppBase` instance is the main app instance. :data:`_MAIN_APP_INST_KEY`
 stores the dict key of the main instance.
 """
 _MAIN_APP_INST_KEY: str = ''    #: key in :data:`_APP_INSTANCES` of main :class:`AppBase` instance
@@ -612,11 +612,13 @@ def _shut_down_sub_app_instances(timeout: Optional[float] = None):
     """
     aqc_kwargs: dict[str, Any] = ({'blocking': False} if timeout is None else {'timeout': timeout})
     blocked = app_inst_lock.acquire(**aqc_kwargs)           # pylint: disable=consider-using-with
-    for app in reversed(list(_APP_INSTANCES.values())):     # list() because the weak ref dict gets changed in the loop
-        if not app.is_main:
-            app.shutdown(timeout=timeout)
-    if blocked:
-        app_inst_lock.release()
+    try:
+        for app in reversed(list(_APP_INSTANCES.values())):  # list() because the weak ref dict gets changed in the loop
+            if not app.is_main_app:
+                app.shutdown(timeout=timeout)
+    finally:
+        if blocked:
+            app_inst_lock.release()
 
 
 class _PrintingReplicator:
@@ -719,7 +721,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
     * :attr:`_log_with_timestamp` log timestamp line prefix if True or a non-empty strftime compatible format string.
     * :attr:`py_log_params` python logging config dictionary.
     * :attr:`_nul_std_out` null stream used to prevent print-outs to :attr:`standard output <sys.stdout>`.
-    * :attr:`_shut_down` flag set to True if this application instance got already shutdown.
+    * :attr:`_got_shut_down` flag set to True if this main|sub application instance got already fully shutdown.
     * :attr:`startup_beg` datetime of the start of instantiation/startup of this app instance.
     * :attr:`startup_end` datetime of the end of the instantiation/startup of this application instance.
     * :attr:`suppress_stdout` flag set to True if this application does not print to stdout/console.
@@ -741,7 +743,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
     _log_with_timestamp: Union[bool, str] = False   #: True of strftime format string to enable timestamp
     _nul_std_out: Optional[TextIO] = None           #: logging null stream
     py_log_params: dict[str, Any] = {}              #: dict of config parameters for py logging
-    _shut_down: bool = False                        #: True if this app instance got shut down already
+    _got_shut_down: bool = False                    #: True if this app instance got already shut down
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(self, app_title: str = '', app_name: str = '', app_version: str = '', sys_env_id: str = '',
@@ -787,7 +789,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         _register_app_thread()
         _register_app_instance(self)
 
-        if self.is_main:                                # if this instance is the main/first app instance
+        if self.is_main_app:                            # if this instance is the main/first app instance
             self._init_path_placeholders()              # .. then init PATH_PLACEHOLDERS
 
             app_path, cwd_path = norm_path(app_path), norm_path(os.getcwd())
@@ -858,8 +860,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 self.po(f"AppBase._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
 
     def __del__(self):
-        """ deallocate this app instance by calling :func:`AppBase.shutdown`.
-        """
+        """ deallocate this app instance by calling :func:`AppBase.shutdown`. """
         self.shutdown(exit_code=None)
 
     @property
@@ -899,8 +900,8 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         return self._debug_level >= DEBUG_LEVEL_ENABLED
 
     @property
-    def is_main(self) -> bool:
-        """ True if this app instance is the main/first one or if there is already no main app instance. """
+    def is_main_app(self) -> bool:
+        """ returns True if this app instance is the main/first one or if there is already no main app instance. """
         return main_app_instance() in (None, self)
 
     @property
@@ -970,7 +971,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         attribute this app instance):
 
         * :data:`_MULTI_THREADING_ACTIVATED`: if True, then the thread id gets printed surrounded with
-          angle brackets (< and >), right aligned and space padded to A minimum of 6 characters.
+          angle brackets (< and >), right aligned and space padded to a minimum of 6 characters.
         * :attr:`sys_env_id`: if not empty, then printed surrounded with curly brackets ({ and }), left aligned
           and space padded to a minimum of 4 characters.
         * :attr:`_log_with_timestamp`: if (a) True or (b) a non-empty string, then the system time
@@ -1051,7 +1052,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         .. hint:: this method has an alias named :meth:`.po`
         """
-        if file is None and main_app_instance() is not self:    # self.is_main==True when main_app_instance() is None
+        if file is None and main_app_instance() is not self:  # self.is_main_app==True when main_app_instance() is None
             with log_file_lock:
                 file = self._log_buf_stream or self._log_file_stream
         if file:
@@ -1101,26 +1102,27 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                                 shutdowns of the app/sub-app instances and for the acquisition of the threading locks of
                                 :data:`the ae log file <log_file_lock>` and the :data:`app instances <app_inst_lock>`.
         """
-        if self._shut_down:
-            return
+        if self._got_shut_down:
+            return  # needed for unit test runs where sys.exit() got patched or caught via pytest.raises(SystemExit)
+        self._got_shut_down = True
+
         aqc_kwargs: dict[str, Any] = {'blocking': False} if timeout is None else {'timeout': timeout}
-        is_main_app_instance = main_app_instance() is self      # self.is_main==True when main_app_instance() is None
-        force = is_main_app_instance and exit_code              # prevent deadlock on app error exit/shutdown
+        is_main_app_instance = main_app_instance() is self  # self.is_main_app==True when main_app_instance() is None
+        force = is_main_app_instance and exit_code          # prevent deadlock on app error exit/shutdown
 
         if exit_code is not None:
             if not 0 <= exit_code <= 255:
                 self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
             self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
-        # pylint: disable-next=consider-using-with
-        a_blocked = (False if force else app_inst_lock.acquire(**aqc_kwargs))
+        app_lock = (False if force else app_inst_lock.acquire(**aqc_kwargs))    # pylint: disable=consider-using-with
+
         if is_main_app_instance:
             _shut_down_sub_app_instances(timeout=timeout)
             if _MULTI_THREADING_ACTIVATED:
                 _join_app_threads(timeout=timeout)
 
-        # pylint: disable-next=consider-using-with
-        l_blocked = (False if force else log_file_lock.acquire(**aqc_kwargs))
+        log_lock = (False if force else log_file_lock.acquire(**aqc_kwargs))    # pylint: disable=consider-using-with
 
         self._flush_and_close_log_buf()
         self._close_log_file()
@@ -1138,22 +1140,23 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         self._std_out_err_redirection(False)
 
-        if l_blocked:
+        if log_lock:
             log_file_lock.release()
 
         _unregister_app_instance(self.app_key)
-        if a_blocked:
+
+        if app_lock:
             app_inst_lock.release()
-        self._shut_down = True
-        if is_main_app_instance and exit_code is not None:
-            sys.exit(exit_code)             # pragma: no cover (would break/cancel test run)
+
+        if is_main_app_instance and exit_code is not None:  # pragma: no cover (would break/cancel test run)
+            sys.exit(exit_code)
 
     def _std_out_err_redirection(self, redirect: bool):
         """ enable/disable the redirection of the standard output/error TextIO streams if needed.
 
         :param redirect:        pass ``True`` to enable or ``False`` to disable the redirection.
         """
-        is_main_app_instance = main_app_instance() is self          # is_main is True when main_app_instance() is None
+        is_main_app_instance = main_app_instance() is self          # is_main_app==True when main_app_instance() is None
         if redirect:
             if not isinstance(sys.stdout, _PrintingReplicator):     # sys.stdout==ori_std_out fails on pytest/capsys
                 if not self.suppress_stdout:
