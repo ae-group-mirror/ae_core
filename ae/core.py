@@ -215,6 +215,26 @@ as a :ref:`commend line option <config-options>`. this way you can specify
 :ref:`the actual debug level <pre-defined-config-options>` without the need to change (and re-build) your
 application code.
 
+
+temporary directories
+---------------------
+
+multiple temporary directories are easily managed with three helper functions provided by this portion. each of them is
+identified by a context id. the first call of :func:`temp_context_get_or_create` does create a new temporary directory
+with an optional subfolder. further calls to this function will either create new contexts or subfolders to an existing
+context. the already created folders of each context can be determined via the function :func:`temp_context_folders`.
+if the context is no longer needed it can be released/cleaned-up by calling the function
+:func:`temp_context_cleanup`.
+
+- :func:`temp_context_get_or_create`: creates a new temporary directory for a specific context or
+  retrieves the path of an existing one.
+- :func:`temp_context_folders`: retrieves a list of folders within a temporary directory context.
+- :func:`temp_context_cleanup`: cleans up and removes a temporary directory for a specific context.
+
+- :data:`TempContextType`: type hint for the temporary directory context.
+- :data:`_temp_folders`: internal variable that stores the temporary folder contexts.
+
+
 .. _debug-level-constants:
 
 """
@@ -226,6 +246,7 @@ import logging.config
 import os
 import shutil
 import sys
+import tempfile
 import threading
 import traceback
 import weakref
@@ -243,7 +264,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.79'
+__version__ = '0.3.80'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -691,7 +712,7 @@ def _join_app_threads(timeout: Optional[float] = None):
     main_thread = threading.current_thread()
     for app_thread in reversed(list(_APP_THREADS.values())):    # threading.enumerate() includes PyCharm/pytest threads
         if app_thread is not main_thread:
-            print_out(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.getName()}", logger=_LOGGER)
+            print_out(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.name}", logger=_LOGGER)
             app_thread.join(timeout)
             if app_thread.ident is not None:     # mypy needs it because ident is Optional
                 _APP_THREADS.pop(app_thread.ident)
@@ -1093,27 +1114,31 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
     vpo = verbose_out         #: alias of method :meth:`.verbose_out`
 
-    def shutdown(self, exit_code: Optional[int] = 0, timeout: Optional[float] = None):
+    def shutdown(self, exit_code: Optional[int] = 0, error_message: str = "", timeout: Optional[float] = None):
         """ shutdown this app instance, and if it is the main app instance, then also any created sub-app-instances.
 
         :param exit_code:       set application OS exit code - ignored if this is NOT the main app instance (def=0).
                                 pass None to prevent call of sys.exit(exit_code).
-        :param timeout:         timeout float value in seconds used for the thread termination/joining, for the
+        :param error_message:   optional shutdown error message.
+        :param timeout:         optional timeout float value in seconds used for the thread termination/joining, for the
                                 shutdowns of the app/sub-app instances and for the acquisition of the threading locks of
                                 :data:`the ae log file <log_file_lock>` and the :data:`app instances <app_inst_lock>`.
         """
+        is_main_app_instance = main_app_instance() is self  # self.is_main_app==True when main_app_instance() is None
+        force = is_main_app_instance and exit_code          # prevent deadlock on app error exit/shutdown
+
+        if error_message:
+            self.po("***** " + error_message)
+        if exit_code is not None:
+            if not 0 <= exit_code <= 255:
+                self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
+            self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
+
         if self._got_shut_down:
             return  # needed for unit test runs where sys.exit() got patched or caught via pytest.raises(SystemExit)
         self._got_shut_down = True
 
         aqc_kwargs: dict[str, Any] = {'blocking': False} if timeout is None else {'timeout': timeout}
-        is_main_app_instance = main_app_instance() is self  # self.is_main_app==True when main_app_instance() is None
-        force = is_main_app_instance and exit_code          # prevent deadlock on app error exit/shutdown
-
-        if exit_code is not None:
-            if not 0 <= exit_code <= 255:
-                self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
-            self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
         app_lock = (False if force else app_inst_lock.acquire(**aqc_kwargs))    # pylint: disable=consider-using-with
 
@@ -1148,8 +1173,13 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         if app_lock:
             app_inst_lock.release()
 
-        if is_main_app_instance and exit_code is not None:  # pragma: no cover (would break/cancel test run)
-            sys.exit(exit_code)
+        if is_main_app_instance:
+            if not self.verbose:  # if not in verbose debug mode then cleanup all the created temporary folder contexts
+                for context in _temp_folders:
+                    temp_context_cleanup(context)
+
+            if exit_code is not None:           # pragma: no cover (would break/cancel test run)
+                sys.exit(exit_code)
 
     def _std_out_err_redirection(self, redirect: bool):
         """ enable/disable the redirection of the standard output/error TextIO streams if needed.
@@ -1252,3 +1282,55 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             dfn = f"{file_base}-{first_idx:0>{LOG_FILE_IDX_WIDTH}}{file_ext}"
             if os_path_isfile(dfn):
                 os.remove(dfn)
+
+
+TempContextType = str                                   #: id/key of a temporary directory context
+_temp_folders: dict[TempContextType, tuple[tempfile.TemporaryDirectory, list[str]]] = {}  #: temporary folders
+
+
+def temp_context_cleanup(context: TempContextType = ""):
+    """ clean up temporary folders and files.
+
+    :param context:             temporary directory context name. if not specified or passed as an empty string then
+                                the default context will be cleaned up.
+    """
+    if ctx := _temp_folders.pop(context, None):
+        ctx[0].cleanup()
+
+
+def temp_context_folders(context: TempContextType = "") -> list[str]:
+    """ determine the folders created under the specified temporary directory context.
+
+    :param context:             temporary directory context name. if not specified or passed as an empty string then
+                                the default context will be cleaned up.
+    :return:                    list of folders created underneath the temporary directory of the specified context.
+                                or an empty list if the context does not exist (or got cleaned up).
+    """
+    if context in _temp_folders:
+        return _temp_folders[context][1]
+    return []
+
+
+def temp_context_get_or_create(context: TempContextType = "", folder_name: str = "") -> str:
+    """ get or create (if not exists) a temporary directory context with optional sub-folder.
+
+    :param context:             temporary folder context name. if not specified or passed as an empty string then
+                                the default context will be used/created
+    :param folder_name:         optional name of a sub-folder.
+    :return:                    absolute path of the temporary directory (including the optional sub-folder).
+    """
+    if context in _temp_folders:
+        temp_obj, folders = _temp_folders[context]
+    else:
+        temp_obj = tempfile.TemporaryDirectory()    # pylint: disable=consider-using-with
+        folders = []
+        _temp_folders[context] = (temp_obj, folders)
+
+    folder_path = norm_path(os_path_join(temp_obj.name, folder_name))
+
+    if folder_name not in folders:
+        if folder_name:
+            os.makedirs(folder_path, exist_ok=True)
+        folders.append(folder_name)
+
+    return folder_path
