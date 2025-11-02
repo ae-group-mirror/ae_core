@@ -16,15 +16,16 @@ import ae.paths                 # for patch tests of ae.paths.PATH_PLACEHOLDERS
 import ae.core                  # for patch tests of ae.core.PATH_PLACEHOLDERS
 
 from ae.base import (
-    DATE_TIME_ISO, force_encoding, norm_path, os_path_dirname, os_path_isfile, os_path_splitext, read_file, write_file)
+    DATE_TIME_ISO,
+    force_encoding, norm_path, os_path_dirname, os_path_isfile, os_path_isdir, os_path_splitext, read_file, write_file)
 from ae.paths import PATH_PLACEHOLDERS, placeholder_path, coll_folders, Collector
 # noinspection PyProtectedMember
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE,
     LOG_FILE_IDX_WIDTH, MAX_NUM_LOG_FILES,
     activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
-    debug_out, verbose_out, is_debug, is_verbose,
-    registered_app_names,
+    debug_out, verbose_out, is_debug, is_verbose, registered_app_names,
+    temp_context_cleanup, temp_context_folders, temp_context_get_or_create, _temp_folders,
     AppBase, _PrintingReplicator)
 
 
@@ -854,11 +855,19 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
     def test_app_instances_reset2(self):
         assert main_app_instance() is None
 
+    def test_shutdown_err_msg(self, capsys, restore_app_env):
+        app = AppBase()
+
+        app.shutdown(None, error_message='AppBase.shutdown() error-message')
+
+        out, err = capsys.readouterr()
+        assert 'AppBase.shutdown() error-message' in out
+        assert err == ""
+
     def test_shutdown_none(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_DISABLED)
 
-        with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
-            app.shutdown(None)
+        app.shutdown(None)
 
         out, err = capsys.readouterr()
         assert out == ""
@@ -890,6 +899,16 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
 
         assert 'extended exit code' in capsys.readouterr()[0]
 
+    def test_shutdown_temp_context(self, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
+        assert not _temp_folders
+        temp_context_get_or_create('tst_shutdown_tmp_context')
+        assert 'tst_shutdown_tmp_context' in _temp_folders
+
+        app.shutdown(exit_code=None)
+
+        assert not _temp_folders
+
     def test_verbose(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_VERBOSE)
         assert app.verbose
@@ -904,3 +923,76 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         tst = "tsT-verbose-out-string"
         app.verbose_out(tst)
         assert tst in capsys.readouterr()[0]
+
+
+class TestTempContextDirectories:
+    def test_temp_context_cleanup(self):
+        path = temp_context_get_or_create()
+        assert path == temp_context_get_or_create()
+        assert os_path_isdir(path)
+
+        temp_context_cleanup()
+
+        assert not os_path_isdir(path)
+
+        new_path = temp_context_get_or_create()
+        assert os_path_isdir(new_path)
+        assert new_path != path
+
+        temp_context_cleanup()
+
+        assert not os_path_isdir(new_path)
+
+    def test_temp_context_folders(self):
+        folder_name = "tst_tmp_dir"
+        path = temp_context_get_or_create(folder_name=folder_name)
+
+        assert path.endswith(folder_name)
+        assert set(temp_context_folders()) == {folder_name}
+
+        assert temp_context_folders(context="any not existing context") == []
+
+    def test_temp_context_get_or_create(self):
+        path = temp_context_get_or_create()
+        assert os_path_isdir(path)
+        temp_context_cleanup()
+
+    def test_temp_context_get_or_create_named(self):
+        ctx_name = "any string to name a temp dir"
+
+        path = temp_context_get_or_create(context=ctx_name)
+
+        assert os_path_isdir(path)
+        temp_context_cleanup()
+        assert os_path_isdir(path)
+        temp_context_cleanup(context=ctx_name)
+        assert not os_path_isdir(path)
+
+    def test_temp_context_get_or_create_with_folder(self):
+        dir1 = "name of the first temp dir"
+        dir2 = "TempDirFolder2"
+
+        path = temp_context_get_or_create(folder_name=dir1)
+
+        assert path.endswith(dir1)
+        assert os_path_isdir(path)
+
+        path2 = temp_context_get_or_create(folder_name=dir2)
+
+        assert path2.endswith(dir2)
+        assert os_path_isdir(path)
+        assert os_path_isdir(path2)
+        assert set(temp_context_folders()) == {dir1, dir2}
+
+        path2a = temp_context_get_or_create(folder_name=dir2)
+
+        assert path2a == path2
+        assert path2a.endswith(dir2)
+        assert os_path_isdir(path)
+        assert os_path_isdir(path2a)
+        assert set(temp_context_folders()) == {dir1, dir2}
+
+        temp_context_cleanup()
+
+        assert not os_path_isdir(path)
+        assert not os_path_isdir(path2)

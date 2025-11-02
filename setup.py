@@ -12,7 +12,7 @@ setup_kwargs = {
     'author_email': 'aecker2@gmail.com',
     'classifiers': [       'Development Status :: 3 - Alpha', 'Natural Language :: English', 'Operating System :: OS Independent',
         'Programming Language :: Python', 'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.9', 'Topic :: Software Development :: Libraries :: Python Modules',
+        'Programming Language :: Python :: 3.12', 'Topic :: Software Development :: Libraries :: Python Modules',
         'Typing :: Typed'],
     'description': 'ae namespace module portion core: application core constants, helper functions and base classes',
     'extras_require': {       'dev': [       'aedev_project_tpls', 'ae_ae', 'anybadge', 'coverage-badge', 'aedev_project_manager', 'flake8',
@@ -25,13 +25,13 @@ setup_kwargs = {
     'license': 'GPL-3.0-or-later',
     'long_description': ('<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae v0.3.101 -->\n'
  '<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.namespace_root_tpls v0.3.22 -->\n'
- '# core 0.3.79\n'
+ '# core 0.3.80\n'
  '\n'
  '[![GitLab develop](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/develop?logo=python)](\n'
  '    https://gitlab.com/ae-group/ae_core)\n'
  '[![LatestPyPIrelease](\n'
- '    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.79?logo=python)](\n'
- '    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.79)\n'
+ '    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.80?logo=python)](\n'
+ '    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.80)\n'
  '[![PyPIVersions](https://img.shields.io/pypi/v/ae_core)](\n'
  '    https://pypi.org/project/ae-core/#history)\n'
  '\n'
@@ -108,7 +108,7 @@ setup_kwargs = {
         'Source': 'https://ae.readthedocs.io/en/latest/_modules/ae/core.html'},
     'python_requires': '>=3.9',
     'url': 'https://gitlab.com/ae-group/ae_core',
-    'version': '0.3.79',
+    'version': '0.3.80',
     'zip_safe': True,
 }
 
