@@ -398,19 +398,19 @@ def logger_shutdown():
     logging.shutdown()
 
 
-_MULTI_THREADING_ACTIVATED: bool = False                #: flag if threading is used in your application
+_multi_threading_activated: bool = False                #: flag if threading is used in your application
 
 
 def activate_multi_threading():
     """ activate multi-threading for all app instances (normally done at the main app startup). """
-    global _MULTI_THREADING_ACTIVATED                   # pylint: disable=global-statement
-    _MULTI_THREADING_ACTIVATED = True
+    global _multi_threading_activated                   # pylint: disable=global-statement
+    _multi_threading_activated = True
 
 
 def _deactivate_multi_threading():
     """ disable multi threading (needed to reset the app environment in unit testing). """
-    global _MULTI_THREADING_ACTIVATED                   # pylint: disable=global-statement
-    _MULTI_THREADING_ACTIVATED = False
+    global _multi_threading_activated                   # pylint: disable=global-statement
+    _multi_threading_activated = False
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
@@ -474,7 +474,7 @@ def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] 
     while retries:
         try:
             print_strings = tuple(map(lambda _: str(_).encode(enc, errors=encode_errors_def).decode(enc), objects))
-            if use_py_logger or _MULTI_THREADING_ACTIVATED:
+            if use_py_logger or _multi_threading_activated:
                 # concatenating objects also prevents fluttered log file content in multi-threading apps
                 # see https://stackoverflow.com/questions/3029816/how-do-i-get-a-thread-safe-print-in-python-2-6
                 # and https://stackoverflow.com/questions/50551637/end-key-in-print-not-thread-safe
@@ -991,7 +991,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         the line prefix consists of (depending on the individual values of either a module variable or of an
         attribute this app instance):
 
-        * :data:`_MULTI_THREADING_ACTIVATED`: if True, then the thread id gets printed surrounded with
+        * :data:`_multi_threading_activated`: if True, then the thread id gets printed surrounded with
           angle brackets (< and >), right aligned and space padded to a minimum of 6 characters.
         * :attr:`sys_env_id`: if not empty, then printed surrounded with curly brackets ({ and }), left aligned
           and space padded to a minimum of 4 characters.
@@ -1006,7 +1006,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         :return:                log file line prefix string including one space as a separator character at the end.
         """
         parts = []
-        if _MULTI_THREADING_ACTIVATED:
+        if _multi_threading_activated:
             parts.append(f"<{threading.get_ident(): >6}>")
         if self.app_key[-1] != APP_KEY_SEP:
             parts.append(f"{{{self.app_key: <6}}}")
@@ -1144,7 +1144,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         if is_main_app_instance:
             _shut_down_sub_app_instances(timeout=timeout)
-            if _MULTI_THREADING_ACTIVATED:
+            if _multi_threading_activated:
                 _join_app_threads(timeout=timeout)
 
         log_lock = (False if force else log_file_lock.acquire(**aqc_kwargs))    # pylint: disable=consider-using-with
@@ -1175,7 +1175,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         if is_main_app_instance:
             if not self.verbose:  # if not in verbose debug mode then cleanup all the created temporary folder contexts
-                for context in _temp_folders:
+                for context in list(_temp_folders):
                     temp_context_cleanup(context)
 
             if exit_code is not None:           # pragma: no cover (would break/cancel test run)

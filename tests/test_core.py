@@ -25,7 +25,7 @@ from ae.core import (
     LOG_FILE_IDX_WIDTH, MAX_NUM_LOG_FILES,
     activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
     debug_out, verbose_out, is_debug, is_verbose, registered_app_names,
-    temp_context_cleanup, temp_context_folders, temp_context_get_or_create,
+    temp_context_cleanup, temp_context_folders, temp_context_get_or_create, _temp_folders,
     AppBase, _PrintingReplicator)
 
 
@@ -855,11 +855,19 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
     def test_app_instances_reset2(self):
         assert main_app_instance() is None
 
+    def test_shutdown_err_msg(self, capsys, restore_app_env):
+        app = AppBase()
+
+        app.shutdown(None, error_message='AppBase.shutdown() error-message')
+
+        out, err = capsys.readouterr()
+        assert 'AppBase.shutdown() error-message' in out
+        assert err == ""
+
     def test_shutdown_none(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_DISABLED)
 
-        with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
-            app.shutdown(None)
+        app.shutdown(None)
 
         out, err = capsys.readouterr()
         assert out == ""
@@ -890,6 +898,16 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             app.shutdown(123456)    # test warning if exit code is not in 0..255
 
         assert 'extended exit code' in capsys.readouterr()[0]
+
+    def test_shutdown_temp_context(self, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
+        assert not _temp_folders
+        temp_context_get_or_create('tst_shutdown_tmp_context')
+        assert 'tst_shutdown_tmp_context' in _temp_folders
+
+        app.shutdown(exit_code=None)
+
+        assert not _temp_folders
 
     def test_verbose(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_VERBOSE)
