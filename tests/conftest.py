@@ -1,10 +1,14 @@
-# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.59
+# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.65
 # pylint: disable=redefined-outer-name, unused-argument; suppress fixtures conflicts (silly pylint)
 """ fixtures for to test this project """
 import os
 import sys
 import glob
 import pytest
+
+
+assert (cwd := os.getcwd()) == (prj_root := os.path.dirname(os.path.dirname(__file__))), f"wrong {cwd=}, != {prj_root=}"
+sys.path.insert(0, prj_root)  # add project root (==CWD) to sys.path (to run pytest w/o the 'python -m' prefix)
 
 
 SKIP_EXPRESSION = "'CI_PROJECT_ID' in os.environ"
@@ -18,7 +22,7 @@ def tst_app_key():
 
 
 @pytest.fixture
-def sys_argv_app_key_restore(tst_app_key):          # needed for tests using sys.argv/get_opt() of ConsoleApp
+def sys_argv_app_key_restore(tst_app_key):          # needed for tests using sys.argv/get_option() of ConsoleApp
     """ change sys.argv before test run to use test app key and restore sys.argv after test run. """
     old_argv = sys.argv
     sys.argv = [tst_app_key, ]
@@ -34,7 +38,7 @@ def restore_app_env(sys_argv_app_key_restore):
     # LOCAL IMPORT because a portion may not depend-on/use ae.core
     # noinspection PyProtectedMember
     # pylint: disable=import-outside-toplevel
-    from ae.core import _APP_INSTANCES, app_inst_lock, logger_shutdown, _unregister_app_instance     # type: ignore
+    from ae.core import _APP_INSTANCES, app_inst_lock, logger_shutdown, unregister_app_instance     # type: ignore
 
     yield sys_argv_app_key_restore
 
@@ -50,9 +54,9 @@ def restore_app_env(sys_argv_app_key_restore):
                 app_win.close()
 
             # remove app from ae.core app register/dict
-            _unregister_app_instance(key)
+            unregister_app_instance(key)
 
-        if not app_keys:    # else logger_shutdown got called already by _unregister_app_instance()
+        if not app_keys:    # else logger_shutdown got called already by unregister_app_instance()
             logger_shutdown()
 
 
