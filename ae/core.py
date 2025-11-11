@@ -264,7 +264,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.80'
+__version__ = '0.3.81'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -388,7 +388,7 @@ def logger_late_init():
     """ check if logging modules got initialized already and if not, then do it now. """
     global _LOGGER                                      # pylint: disable=global-statement
     if not _LOGGER:
-        _LOGGER = logging.getLogger(__name__)           # reset (_LOGGER = None) done in _unregister_app_instance()
+        _LOGGER = logging.getLogger(__name__)           # reset (_LOGGER = None) done in unregister_app_instance()
 
 
 def logger_shutdown():
@@ -548,16 +548,12 @@ def is_verbose() -> bool:
 
 APP_KEY_SEP: str = '@'      #: separator character used in :attr:`~AppBase.app_key` of :class:`AppBase` instance
 
-# had to use type comment because the following line is throwing an error in the Sphinx docs make:
-# _APP_INSTANCES: weakref.WeakValueDictionary[str, "AppBase"] = weakref.WeakValueDictionary()
-_APP_INSTANCES = weakref.WeakValueDictionary()   # type: weakref.WeakValueDictionary[str, AppBase]
-""" dict that is weakly holding references to all :class:`AppBase` instances created at run time.
+_APP_INSTANCES: dict[str, 'AppBase'] = {}
+""" dict is holding references to all :class:`AppBase` instances created at run time.
 
-gets automatically initialized in :meth:`AppBase.__init__` to allow log file split/rotation
-and debug_level access at application thread or module level.
-
-the first created :class:`AppBase` instance is the main app instance. :data:`_MAIN_APP_INST_KEY`
-stores the dict key of the main instance.
+new instance get automatically registered via the :func:`register_app_instance` function called by the method
+:meth:`AppBase.__init__`. the first created :class:`AppBase` instance is the main app instance.
+:data:`_MAIN_APP_INST_KEY` stores the dict key of the main instance.
 """
 _MAIN_APP_INST_KEY: str = ''    #: key in :data:`_APP_INSTANCES` of main :class:`AppBase` instance
 
@@ -580,7 +576,7 @@ def registered_app_names() -> list[str]:
         return [app.app_name for app in _APP_INSTANCES.values()]
 
 
-def _register_app_instance(app: 'AppBase'):
+def register_app_instance(app: 'AppBase'):
     """ register new :class:`AppBase` instance in :data:`_APP_INSTANCES`.
 
     :param app:                 :class:`AppBase` instance to register
@@ -603,7 +599,7 @@ def _register_app_instance(app: 'AppBase'):
         _APP_INSTANCES[key] = app
 
 
-def _unregister_app_instance(app_key: str) -> Optional['AppBase']:
+def unregister_app_instance(app_key: str) -> Optional['AppBase']:
     """ unregister/remove :class:`AppBase` instance from within :data:`_APP_INSTANCES`.
 
     :param app_key:             app key of the instance to remove.
@@ -808,7 +804,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         self.startup_end: Optional[datetime.datetime] = None                    #: end datetime of the app startup
 
         _register_app_thread()
-        _register_app_instance(self)
+        register_app_instance(self)
 
         if self.is_main_app:                            # if this instance is the main/first app instance
             self._init_path_placeholders()              # .. then init PATH_PLACEHOLDERS
@@ -879,10 +875,6 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 shutil.rmtree(chk_path if cph_exists else cph_path, ignore_errors=True)
             if not access:
                 self.po(f"AppBase._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
-
-    def __del__(self):
-        """ deallocate this app instance by calling :func:`AppBase.shutdown`. """
-        self.shutdown(exit_code=None)
 
     @property
     def active_log_stream(self) -> Optional[Union[StringIO, TextIO]]:
@@ -1168,7 +1160,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         if log_lock:
             log_file_lock.release()
 
-        _unregister_app_instance(self.app_key)
+        unregister_app_instance(self.app_key)
 
         if app_lock:
             app_inst_lock.release()

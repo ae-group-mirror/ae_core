@@ -1,4 +1,4 @@
-# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.59
+# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.65
 """ setup of ae namespace module portion core: application core constants, helper functions and base classes. """
 # noinspection PyUnresolvedReferences
 import sys
@@ -25,13 +25,13 @@ setup_kwargs = {
     'license': 'GPL-3.0-or-later',
     'long_description': ('<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae v0.3.101 -->\n'
  '<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.namespace_root_tpls v0.3.22 -->\n'
- '# core 0.3.80\n'
+ '# core 0.3.81\n'
  '\n'
  '[![GitLab develop](https://img.shields.io/gitlab/pipeline/ae-group/ae_core/develop?logo=python)](\n'
  '    https://gitlab.com/ae-group/ae_core)\n'
  '[![LatestPyPIrelease](\n'
- '    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.80?logo=python)](\n'
- '    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.80)\n'
+ '    https://img.shields.io/gitlab/pipeline/ae-group/ae_core/release0.3.81?logo=python)](\n'
+ '    https://gitlab.com/ae-group/ae_core/-/tree/release0.3.81)\n'
  '[![PyPIVersions](https://img.shields.io/pypi/v/ae_core)](\n'
  '    https://pypi.org/project/ae-core/#history)\n'
  '\n'
@@ -108,7 +108,7 @@ setup_kwargs = {
         'Source': 'https://ae.readthedocs.io/en/latest/_modules/ae/core.html'},
     'python_requires': '>=3.9',
     'url': 'https://gitlab.com/ae-group/ae_core',
-    'version': '0.3.80',
+    'version': '0.3.81',
     'zip_safe': True,
 }
 
