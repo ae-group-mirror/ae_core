@@ -757,7 +757,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             else:
                 raise Exception("TstInitPathPlaceHoldersWriteErr")
 
-        with (patch('ae.core.read_file', _raise_err)):
+        with patch('ae.core.read_file', _raise_err):
             tst_path_placeholders = ae.core.PATH_PLACEHOLDERS.copy()
             with patch('ae.core.PATH_PLACEHOLDERS', tst_path_placeholders):
                 assert not ae.core.PATH_PLACEHOLDERS['ado'].startswith(usr_path)

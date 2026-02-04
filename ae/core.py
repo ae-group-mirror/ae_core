@@ -264,7 +264,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.81'
+__version__ = '0.3.82'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -398,6 +398,7 @@ def logger_shutdown():
     logging.shutdown()
 
 
+# pylint: disable=invalid-name
 _multi_threading_activated: bool = False                #: flag if threading is used in your application
 
 
@@ -632,7 +633,7 @@ def _shut_down_sub_app_instances(timeout: Optional[float] = None):
     try:
         for app in reversed(list(_APP_INSTANCES.values())):  # list() because the weak ref dict gets changed in the loop
             if not app.is_main_app:
-                app.shutdown(timeout=timeout)
+                app.shutdown(timeout=timeout)                                   # pragma: no cover
     finally:
         if blocked:
             app_inst_lock.release()
@@ -698,7 +699,7 @@ def _register_app_thread():
         _APP_THREADS[tid] = threading.current_thread()
 
 
-def _join_app_threads(timeout: Optional[float] = None):
+def _join_app_threads(timeout: Optional[float] = None):                             # pragma: no cover
     """ join/finish all app threads and finally deactivate multi-threading.
 
     :param timeout:             timeout float value in seconds for thread joining (def=None - block/no-timeout).
@@ -1126,7 +1127,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
             self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
-        if self._got_shut_down:
+        if self._got_shut_down:                                                 # pragma: no cover
             return  # needed for unit test runs where sys.exit() got patched or caught via pytest.raises(SystemExit)
         self._got_shut_down = True
 
@@ -1137,23 +1138,23 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         if is_main_app_instance:
             _shut_down_sub_app_instances(timeout=timeout)
             if _multi_threading_activated:
-                _join_app_threads(timeout=timeout)
+                _join_app_threads(timeout=timeout)                              # pragma: no cover
 
         log_lock = (False if force else log_file_lock.acquire(**aqc_kwargs))    # pylint: disable=consider-using-with
 
         self._flush_and_close_log_buf()
         self._close_log_file()
         if self._log_file_index:
-            self._rename_log_file()
+            self._rename_log_file()                                             # pragma: no cover
 
-        if self._nul_std_out:
+        if self._nul_std_out:                                                   # pragma: no cover
             if not self._nul_std_out.closed:
                 self._append_eof_and_flush_file(self._nul_std_out, "NUL stdout")
                 self._nul_std_out.close()
             self._nul_std_out = None
 
         if self.py_log_params:
-            logging.shutdown()
+            logging.shutdown()                                                  # pragma: no cover
 
         self._std_out_err_redirection(False)
 
