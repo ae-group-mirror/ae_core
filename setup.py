@@ -1,4 +1,4 @@
-# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.75
+# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.77
 """ setup of ae namespace module portion core: application core constants, helper functions and base classes. """
 import sys
 # noinspection PyUnresolvedReferences
@@ -28,26 +28,22 @@ setup_kwargs = {
             'aedev_project_tpls',
             'ae_ae',
             'anybadge',
-            'coverage-badge',
             'flake8',
             'mypy',
             'pylint',
             'pytest',
             'pytest-cov',
-            'pytest-django',
             'typing',
             'types-setuptools',
         ],
         'docs': [],
         'tests': [
             'anybadge',
-            'coverage-badge',
             'flake8',
             'mypy',
             'pylint',
             'pytest',
             'pytest-cov',
-            'pytest-django',
             'typing',
             'types-setuptools',
         ],
@@ -81,7 +77,7 @@ setup_kwargs = {
     },
     'python_requires': '>=3.12',
     'url': 'https://gitlab.com/ae-group/ae_core',
-    'version': '0.3.82',
+    'version': '0.3.83',
     'zip_safe': True,
 }
 

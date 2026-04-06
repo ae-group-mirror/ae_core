@@ -3,7 +3,7 @@ application core constants, helper functions and base classes
 =============================================================
 
 this module declares app-specific core constants, helper functions and base classes for all operating systems
-and GUI frameworks that are supported by the ae portions namespace, in order to reduce the amount of code of
+and GUI frameworks that are supported by the ae portions namespace. using this portion reduces the amount of code in
 your application project (and of other ae namespace modules/portions).
 
 .. note::
@@ -264,7 +264,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.82'
+__version__ = '0.3.83'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -415,7 +415,7 @@ def _deactivate_multi_threading():
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
-def print_out(*objects, sep: str = " ", end: str = "\n", file: Optional[TextIO] = None, flush: bool = False,
+def print_out(*objects, sep: str = " ", end: str = '\n', file: Optional[TextIO] = None, flush: bool = False,
               encode_errors_def: str = DEF_ENCODE_ERRORS, logger: Optional['logging.Logger'] = None,
               app: Optional['AppBase'] = None, **kwargs):
     """ universal/unbreakable print function - replacement for the :func:`built-in python function print() <print>`.
@@ -790,8 +790,8 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         self.app_path: str = norm_path(app_path)        #: path to the folder of your main app code file
 
         if not app_title:
-            doc_str = stack_var('__doc__')
-            app_title = doc_str.strip().split('\n')[0] if doc_str else ""
+            doc_str = stack_var('__doc__') or ""
+            app_title = doc_str.strip().splitlines()[0] if doc_str else ""
         self.app_title: str = app_title                                         #: title of this app instance
         self.app_name: str = app_name or app_name_guess()                       #: name of this app instance
         self.app_version: str = app_version or stack_var('__version__') or ""   #: version of this app instance
@@ -1025,15 +1025,14 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                                 None if :paramref:`~log_file_check.curr_stream` is None.
 
         for already opened log files, check if the log file is big enough, and if yes, then do a file rotation. if the
-        log file is not opened but the log file name got already set, then check if the log startup buffer is active,
-        and if yes, then create a new log file, pass log buffer content to it and close the log buffer.
+        log file is not opened but the log file name got already set, then check if the log startup buffer is active.
+        if yes, then create a new log file, pass log buffer content to it and close the log buffer.
         """
         old_stream = new_stream = None
         with log_file_lock:
-            if self._log_file_stream:
-                old_stream = self._log_file_stream
-                self._log_file_stream.seek(0, 2)  # seek EOF due to the non-posix-compliant Windows feature
-                if self._log_file_stream.tell() >= self._log_file_size_max * 1024 * 1024:
+            if old_stream := self._log_file_stream:
+                old_stream.seek(0, 2)  # seek EOF due to the non-posix-compliant Windows feature
+                if old_stream.tell() >= self._log_file_size_max * 1024 * 1024:
                     self._close_log_file()
                     self._rename_log_file()
                     self._open_log_file()
@@ -1253,8 +1252,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
     def _close_log_file(self):
         """ close the ae log file. """
-        if self._log_file_stream:
-            stream = self._log_file_stream
+        if stream := self._log_file_stream:
             self._append_eof_and_flush_file(stream, "ae log file")
             self._log_file_stream = None
             stream.close()
