@@ -264,7 +264,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.83'
+__version__ = '0.3.84'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -790,8 +790,8 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         self.app_path: str = norm_path(app_path)        #: path to the folder of your main app code file
 
         if not app_title:
-            doc_str = stack_var('__doc__') or ""
-            app_title = doc_str.strip().splitlines()[0] if doc_str else ""
+            doc_str = (stack_var('__doc__') or "").strip()
+            app_title = doc_str.splitlines()[0] if doc_str else ""
         self.app_title: str = app_title                                         #: title of this app instance
         self.app_name: str = app_name or app_name_guess()                       #: name of this app instance
         self.app_version: str = app_version or stack_var('__version__') or ""   #: version of this app instance
