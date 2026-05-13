@@ -31,7 +31,7 @@ encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error han
 
 the constants :data:`PACKAGE_NAME`, :data:`PACKAGE_DOMAIN` and :data:`PERMISSIONS` are mainly used for
 apps running on mobile devices (Android or iOS). to avoid redundancies, these values get loaded and registered
-from the :data:`build config file <ae.base.BUILD_CONFIG_FILE>` - if it exists in the current working directory.
+from the :data:`build config file <ae.system.APP_BUILD_CFG_FILENAME>` - if it exists in the current working directory.
 
 
 core helper functions
@@ -255,23 +255,26 @@ from io import StringIO
 from typing import Any, Callable, Optional, TextIO, Union, cast
 
 from ae.base import (                                                                                   # type: ignore
-    BUILD_CONFIG_FILE, DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
-    build_config_variable_values, defuse, dummy_function, force_encoding, norm_path,
-    os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext, os_platform,
-    read_file, stack_var, to_ascii, write_file)
+    DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
+    defuse, dummy_function, force_encoding, norm_path,
+    os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext,
+    read_file, to_ascii, write_file)
+from ae.system import (                                                                                 # type: ignore
+    APP_BUILD_CFG_FILENAME,
+    app_name_guess, build_config_variable_values, os_platform, stack_var)
 from ae.paths import (                                                                                  # type: ignore
-    PATH_PLACEHOLDERS, add_common_storage_paths, app_data_path, app_docs_path, app_name_guess, normalize)
+    PATH_PLACEHOLDERS, add_common_storage_paths, app_data_path, app_docs_path, normalize)
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.84'
+__version__ = '0.3.85'
 
 
 # package and permissions handling defaults for all platforms and frameworks
 PACKAGE_NAME = stack_var('__name__') or 'unspecified_package'                       #: package name default
 PACKAGE_DOMAIN = 'org.test'                                                         #: package domain default
 PERMISSIONS = "INTERNET,VIBRATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE"
-if os_path_isfile(BUILD_CONFIG_FILE):                           # pragma: no cover
+if os_path_isfile(APP_BUILD_CFG_FILENAME):                           # pragma: no cover
     PACKAGE_NAME, PACKAGE_DOMAIN, PERMISSIONS = build_config_variable_values(
         ('package.name', PACKAGE_NAME),
         ('package.domain', PACKAGE_DOMAIN),
@@ -281,7 +284,7 @@ elif os_platform == 'android':                                  # pragma: no cov
     if os_path_basename(_importing_main_name) in (PY_INIT, PY_MAIN):
         _importing_main_name = os_path_dirname(_importing_main_name)
     _importing_package = os_path_splitext(os_path_basename(_importing_main_name))[0]
-    write_file(f'{_importing_package}_debug.log', f"{BUILD_CONFIG_FILE} not bundled - using defaults\n", extra_mode='a')
+    write_file(f'{_importing_package}_debug.log', f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n", extra_mode='a')
 
 
 if os_platform == 'android':  # pragma: no cover
@@ -501,7 +504,7 @@ def print_out(*objects, sep: str = " ", end: str = '\n', file: Optional[TextIO] 
                 if retries == 2:
                     obj = force_encoding(obj, encoding=enc)
                 else:
-                    obj = to_ascii(obj)
+                    obj = to_ascii(str(obj))
                 fixed_objects.append(obj)
             objects = tuple(fixed_objects)
             retries -= 1
@@ -584,7 +587,7 @@ def register_app_instance(app: 'AppBase'):
     """
     with app_inst_lock:
         global _MAIN_APP_INST_KEY                       # pylint: disable=global-statement
-        msg = f"register_app_instance({app}) expects "
+        msg = f"register_app_instance({app.app_key}) expects "
         assert app not in _APP_INSTANCES.values(), msg + "new instance - this app got already registered"
 
         key = app.app_key
@@ -595,7 +598,7 @@ def register_app_instance(app: 'AppBase'):
         if _MAIN_APP_INST_KEY:
             assert cnt > 0, f"No app instances registered but main app key is set to {_MAIN_APP_INST_KEY}"
         else:
-            assert cnt == 0, f"{cnt} sub-apps {list(_APP_INSTANCES.keys())} found after main app remove"
+            assert cnt == 0, f"{cnt} sub-apps {list(_APP_INSTANCES.keys())} found in registering of main app '{key}'"
             _MAIN_APP_INST_KEY = key
         _APP_INSTANCES[key] = app
 
@@ -614,9 +617,9 @@ def unregister_app_instance(app_key: str) -> Optional['AppBase']:
         cnt = len(_APP_INSTANCES)
         if app_key == _MAIN_APP_INST_KEY:
             _MAIN_APP_INST_KEY = ''
-            assert cnt == 0, f"{cnt} sub-apps {list(_APP_INSTANCES.keys())} found after main app {app_key}{app} remove"
+            assert cnt == 0, f"{cnt} sub-apps {list(_APP_INSTANCES.keys())} found on unregister of main app '{app_key}'"
         elif _MAIN_APP_INST_KEY:
-            assert cnt > 0, f"Unregistered last app {app_key}/{app} but was not the main app {_MAIN_APP_INST_KEY}"
+            assert cnt > 0, f"Unregistered last app '{app_key}' but was not the main app '{_MAIN_APP_INST_KEY}'"
 
         return app
 
