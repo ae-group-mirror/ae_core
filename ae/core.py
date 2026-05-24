@@ -256,7 +256,7 @@ from typing import Any, Callable, Optional, TextIO, Union, cast
 
 from ae.base import (                                                                                   # type: ignore
     DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
-    defuse, dummy_function, force_encoding, norm_path,
+    defuse, dummy_function, extend_file, force_encoding, norm_path,
     os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext,
     read_file, to_ascii, write_file)
 from ae.system import (                                                                                 # type: ignore
@@ -267,7 +267,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.85'
+__version__ = '0.3.86'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -284,7 +284,7 @@ elif os_platform == 'android':                                  # pragma: no cov
     if os_path_basename(_importing_main_name) in (PY_INIT, PY_MAIN):
         _importing_main_name = os_path_dirname(_importing_main_name)
     _importing_package = os_path_splitext(os_path_basename(_importing_main_name))[0]
-    write_file(f'{_importing_package}_debug.log', f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n", extra_mode='a')
+    extend_file(f'{_importing_package}_debug.log', f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n")
 
 
 if os_platform == 'android':  # pragma: no cover
