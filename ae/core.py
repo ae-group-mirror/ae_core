@@ -239,6 +239,8 @@ if the context is no longer needed it can be released/cleaned-up by calling the 
 
 """
 # pylint: disable=too-many-lines
+from __future__ import annotations  # allow type forward references (PEP 563), can be removed in Python 3.14+ (PEP 749)
+
 import datetime
 import faulthandler
 import logging
@@ -251,8 +253,9 @@ import threading
 import traceback
 import weakref
 
+from collections.abc import Callable
 from io import StringIO
-from typing import Any, Callable, Optional, TextIO, Union, cast
+from typing import Any, TextIO, cast
 
 from ae.base import (                                                                                   # type: ignore
     DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
@@ -267,7 +270,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.86'
+__version__ = '0.3.87'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -293,7 +296,7 @@ if os_platform == 'android':  # pragma: no cover
     from android.permissions import request_permissions, Permission     # type: ignore # pylint: disable=import-error
     from jnius import autoclass                                         # type: ignore
 
-    def request_app_permissions(callback: Optional[Callable[[list[Permission], list[bool]], None]] = None):
+    def request_app_permissions(callback: Callable[[list[Permission], list[bool]], None] | None = None):
         """ request app/service permissions on Android OS.
 
         :param callback:        optional callback receiving two list arguments with identical length,
@@ -418,9 +421,9 @@ def _deactivate_multi_threading():
 
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
-def print_out(*objects, sep: str = " ", end: str = '\n', file: Optional[TextIO] = None, flush: bool = False,
-              encode_errors_def: str = DEF_ENCODE_ERRORS, logger: Optional['logging.Logger'] = None,
-              app: Optional['AppBase'] = None, **kwargs):
+def print_out(*objects, sep: str = " ", end: str = '\n', file: TextIO | None = None, flush: bool = False,
+              encode_errors_def: str = DEF_ENCODE_ERRORS, logger: logging.Logger | None = None,
+              app: AppBase | None = None, **kwargs):
     """ universal/unbreakable print function - replacement for the :func:`built-in python function print() <print>`.
 
     :param objects:             tuple of objects to be printed. if the first object is a string that starts with a
@@ -459,6 +462,7 @@ def print_out(*objects, sep: str = " ", end: str = '\n', file: Optional[TextIO] 
     if main_app:
         file = main_app.log_file_check(file)    # check if late init of the logging system is needed
     if app and app != main_app:
+        # noinspection PyUnresolvedReferences
         file = app.log_file_check(file)         # check sub-app suppress_stdout/log file status and rotation
     else:
         app = main_app
@@ -564,7 +568,7 @@ _MAIN_APP_INST_KEY: str = ''    #: key in :data:`_APP_INSTANCES` of main :class:
 app_inst_lock: threading.RLock = threading.RLock()  #: app instantiation multi-threading lock
 
 
-def main_app_instance() -> Optional['AppBase']:
+def main_app_instance() -> AppBase | None:
     """ determine the main instance of the :class:`AppBase` in the current running application.
 
     :return:                    the main and first-instantiated :class:`AppBase` instance or None (if the app is not
@@ -603,7 +607,7 @@ def register_app_instance(app: 'AppBase'):
         _APP_INSTANCES[key] = app
 
 
-def unregister_app_instance(app_key: str) -> Optional['AppBase']:
+def unregister_app_instance(app_key: str) -> AppBase | None:
     """ unregister/remove :class:`AppBase` instance from within :data:`_APP_INSTANCES`.
 
     :param app_key:             app key of the instance to remove.
@@ -624,7 +628,7 @@ def unregister_app_instance(app_key: str) -> Optional['AppBase']:
         return app
 
 
-def _shut_down_sub_app_instances(timeout: Optional[float] = None):
+def _shut_down_sub_app_instances(timeout: float | None = None):
     """ shut down all sub-thread/sub-app instances.
 
     :param timeout:             timeout float value in seconds used for the sub-app shutdowns and for the
@@ -652,7 +656,7 @@ class _PrintingReplicator:
         """
         self.sys_out_obj = sys_out_obj
 
-    def write(self, any_str: Union[str, bytes]) -> None:
+    def write(self, any_str: str | bytes) -> None:
         """ write string to ae logging and standard output streams.
 
         automatically suppressing UnicodeEncodeErrors if the console/shell or log file has different encoding by forcing
@@ -661,7 +665,7 @@ class _PrintingReplicator:
         :param any_str:         string or bytes to output.
         """
         message = any_str.decode() if isinstance(any_str, bytes) else any_str
-        app_streams: list[tuple[Optional[AppBase], TextIO]] = []
+        app_streams: list[tuple[AppBase | None, TextIO]] = []
         with log_file_lock, app_inst_lock:
             for app in list(_APP_INSTANCES.values()):
                 stream = app.log_file_check(app.active_log_stream)  # check if log rotation or buf-to-file-switch needed
@@ -702,7 +706,7 @@ def _register_app_thread():
         _APP_THREADS[tid] = threading.current_thread()
 
 
-def _join_app_threads(timeout: Optional[float] = None):                             # pragma: no cover
+def _join_app_threads(timeout: float | None = None):                             # pragma: no cover
     """ join/finish all app threads and finally deactivate multi-threading.
 
     :param timeout:             timeout float value in seconds for thread joining (def=None - block/no-timeout).
@@ -714,7 +718,8 @@ def _join_app_threads(timeout: Optional[float] = None):                         
         if app_thread is not main_thread:
             print_out(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.name}", logger=_LOGGER)
             app_thread.join(timeout)
-            if app_thread.ident is not None:     # mypy needs it because ident is Optional
+            if app_thread.ident is not None:     # mypy needs it because ident is optional, but PyCharm is too silly
+                # noinspection PyTypeChecker
                 _APP_THREADS.pop(app_thread.ident)
     _deactivate_multi_threading()
 
@@ -754,15 +759,15 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
     _debug_level: int = DEBUG_LEVEL_VERBOSE         #: debug level of this app instance
     sys_env_id: str = ''                            #: system environment id of this app instance
     suppress_stdout: bool = True                    #: flag to suppress prints to stdout
-    startup_end: Optional[datetime.datetime] = None  #: end datetime of the application startup
+    startup_end: datetime.datetime | None = None    #: end datetime of the application startup
     _last_log_line_prefix: str = ""                 #: prefix of the last printed log line
-    _log_buf_stream: Optional[StringIO] = None      #: log file buffer stream instance
-    _log_file_stream: Optional[TextIO] = None       #: log file stream instance
+    _log_buf_stream: StringIO | None = None         #: log file buffer stream instance
+    _log_file_stream: TextIO | None = None          #: log file stream instance
     _log_file_index: int = 0                        #: log file index (for rotating logs)
     _log_file_size_max: float = LOG_FILE_MAX_SIZE   #: maximum log file size in MBytes (rotating log files)
     _log_file_name: str = ""                        #: log file name
-    _log_with_timestamp: Union[bool, str] = False   #: True of strftime format string to enable timestamp
-    _nul_std_out: Optional[TextIO] = None           #: logging null stream
+    _log_with_timestamp: bool | str = False         #: True of strftime format string to enable timestamp
+    _nul_std_out: TextIO | None = None              #: logging null stream
     py_log_params: dict[str, Any] = {}              #: dict of config parameters for py logging
     _got_shut_down: bool = False                    #: True if this app instance got already shut down
 
@@ -805,7 +810,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             activate_multi_threading()
 
         self.suppress_stdout: bool = suppress_stdout                            #: flag to suppress prints to stdout
-        self.startup_end: Optional[datetime.datetime] = None                    #: end datetime of the app startup
+        self.startup_end: datetime.datetime | None = None                       #: end datetime of the app startup
 
         _register_app_thread()
         register_app_instance(self)
@@ -881,7 +886,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 self.po(f"AppBase._init_path_placeholder ignored {placeholder=} errors: {err_msg}")
 
     @property
-    def active_log_stream(self) -> Optional[Union[StringIO, TextIO]]:
+    def active_log_stream(self) -> StringIO | TextIO | None:
         """ check if ae logging is active and if yes, then return the currently used log stream (read-only property).
 
         :return:                log file or buf stream if logging is activated, else None.
@@ -926,7 +931,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         """ True if the app is in verbose debug mode. """
         return self._debug_level >= DEBUG_LEVEL_VERBOSE
 
-    def call_method(self, callback: Union[Callable, str], *args, **kwargs) -> Any:
+    def call_method(self, callback: Callable | str, *args, **kwargs) -> Any:
         """ call passed callable/method with the passed args, catching and logging exceptions preventing app exit.
 
         :param callback:            either a callable or the name of the main app method of this instance to call.
@@ -948,8 +953,8 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         return None
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
-    def init_logging(self, py_logging_params: Optional[dict[str, Any]] = None, log_file_name: str = "",
-                     log_file_size_max: float = LOG_FILE_MAX_SIZE, log_with_timestamp: Union[bool, str] = False,
+    def init_logging(self, py_logging_params: dict[str, Any] | None = None, log_file_name: str = "",
+                     log_file_size_max: float = LOG_FILE_MAX_SIZE, log_with_timestamp: bool | str = False,
                      disable_buffering: bool = False):
         """ initialize the logging system.
 
@@ -1019,7 +1024,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         return hide_dup_line_prefix(last_pre, prefix) + " "
 
-    def log_file_check(self, curr_stream: Optional[TextIO] = None) -> Optional[TextIO]:
+    def log_file_check(self, curr_stream: TextIO | None = None) -> TextIO | None:
         """ check and possibly correct log file status and the passed currently used stream.
 
         :param curr_stream:     currently used stream.
@@ -1055,7 +1060,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             return new_stream
         return curr_stream
 
-    def print_out(self, *objects, file: Optional[TextIO] = None, **kwargs):
+    def print_out(self, *objects, file: TextIO | None = None, **kwargs):
         """ app-instance-specific print-outs.
 
         :param objects:         objects to be printed out.
@@ -1109,7 +1114,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
     vpo = verbose_out         #: alias of method :meth:`.verbose_out`
 
-    def shutdown(self, exit_code: Optional[int] = 0, error_message: str = "", timeout: Optional[float] = None):
+    def shutdown(self, exit_code: int | None = 0, error_message: str = "", timeout: float | None = None):
         """ shutdown this app instance, and if it is the main app instance, then also any created sub-app-instances.
 
         :param exit_code:       set application OS exit code - ignored if this is NOT the main app instance (def=0).
@@ -1202,7 +1207,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         if is_main_app_instance:
             if redirect:
-                faulthandler.enable(file=sys.stdout)
+                faulthandler.enable(file=sys.stdout.fileno())
             elif faulthandler.is_enabled():
                 faulthandler.disable()  # pragma: no cover (badly testable - would cancel/break test runs)
 

@@ -8,7 +8,7 @@ import sys
 import threading
 
 from conftest import delete_files
-from typing import cast, Any, TextIO
+from typing import Any, TextIO, cast
 from unittest.mock import patch
 
 
@@ -316,6 +316,7 @@ class TestAeLogging:
         tst_out = 'only printed to log file'
         try:
             app = AppBase('test_open_log_file_with_suppressed_stdout', suppress_stdout=True)
+            # noinspection PyUnresolvedReferences
             app._nul_std_out.close()
 
             assert app.suppress_stdout is True
@@ -566,7 +567,7 @@ class TestPythonLogging:
         finally:
             logging.shutdown()
             # pjm: assert delete_files(log_file) == 0
-            # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            # PyCharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
             assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
@@ -575,7 +576,7 @@ class TestPythonLogging:
         finally:
             logging.shutdown()
             # pjm: assert delete_files(log_file) == 0
-            # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            # PyCharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
             assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         # loggers
@@ -585,7 +586,7 @@ class TestPythonLogging:
         finally:
             logging.shutdown()
             # pjm: assert delete_files(log_file) == 0
-            # pycharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
+            # PyCharm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
             assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
 
         try:
@@ -594,7 +595,7 @@ class TestPythonLogging:
         finally:
             logging.shutdown()
             # pjm: assert delete_files(log_file, ret_type='contents')[0].endswith(log_text + os.linesep)
-            # pjm+pycharm: delete_files returns 5 files (this one 2*, all the before missing ones & wrong ordered)?!?!?
+            # pjm+PyCharm: delete_files returns 5 files (this one 2*, all the before missing ones & wrong ordered)?!?!?
             assert log_text + os.linesep in delete_files(log_file, ret_type='contents')
 
         try:
@@ -655,7 +656,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
 
     def test_app_find_title(self, restore_app_env):
         app = AppBase()
-        assert app.app_title == __doc__.strip()
+        assert app.app_title == (__doc__ or "").strip()
 
     def test_call_method_pass_silently_if_not_existing(self, restore_app_env):
         app = AppBase()
