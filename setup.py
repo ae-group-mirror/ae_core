@@ -1,4 +1,4 @@
-# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.78
+# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.79
 """ setup of ae namespace module portion core: application core constants, helper functions and base classes. """
 import sys
 # noinspection PyUnresolvedReferences
@@ -78,7 +78,7 @@ setup_kwargs = {
     },
     'python_requires': '>=3.12',
     'url': 'https://gitlab.com/ae-group/ae_core',
-    'version': '0.3.86',
+    'version': '0.3.87',
     'zip_safe': True,
 }
 
