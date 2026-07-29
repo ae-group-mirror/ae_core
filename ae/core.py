@@ -270,7 +270,7 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.87'
+__version__ = '0.3.88'
 
 
 # package and permissions handling defaults for all platforms and frameworks
@@ -1085,7 +1085,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
     po = print_out          #: alias of method :meth:`.print_out`
 
     def debug_out(self, *objects, **kwargs):
-        """ print objects if :attr:`the current debug level <.core.AppBase.debug_level>`of this app instance is enabled.
+        """ print objects if :attr:`the current debug level <core.AppBase.debug_level>` of this app instance is enabled.
 
         :param objects:             objects to be printed out.
         :param kwargs:              all the supported kwargs of this method are documented at the

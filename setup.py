@@ -1,15 +1,14 @@
-# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.79
+# THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.project_tpls v0.3.90
 """ setup of ae namespace module portion core: application core constants, helper functions and base classes. """
-import sys
-# noinspection PyUnresolvedReferences
 import pathlib
-# noinspection PyUnresolvedReferences
+import sys
+from typing import Any
 import setuptools
 
 
 print("SetUp " + __name__ + ": " + sys.executable + str(sys.argv) + f" {sys.path=}")
 
-setup_kwargs = {
+setup_kwargs: dict[str, Any] = {
     'author': 'AndiEcker',
     'author_email': 'aecker2@gmail.com',
     'classifiers': [
@@ -78,10 +77,10 @@ setup_kwargs = {
     },
     'python_requires': '>=3.12',
     'url': 'https://gitlab.com/ae-group/ae_core',
-    'version': '0.3.87',
+    'version': '0.3.88',
     'zip_safe': True,
 }
 
 if __name__ == "__main__":
     setuptools.setup(**setup_kwargs)
-    pass
+    ...
