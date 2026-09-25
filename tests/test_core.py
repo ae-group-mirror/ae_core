@@ -1,5 +1,6 @@
 """ unit and integration tests of the ae.core portion. """
 import datetime
+import importlib
 import logging
 import os
 import pytest
@@ -8,31 +9,35 @@ import sys
 import threading
 
 from conftest import delete_files
+from functools import partial
 from typing import Any, TextIO, cast
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 
 import ae.paths                 # for patch tests of ae.paths.PATH_PLACEHOLDERS
 import ae.core                  # for patch tests of ae.core.PATH_PLACEHOLDERS
 
 from ae.base import (
-    DATE_TIME_ISO,
-    force_encoding, norm_path, os_path_dirname, os_path_isfile, os_path_isdir, os_path_splitext, read_file, write_file)
+    DATE_TIME_ISO, PY_INIT,
+    force_encoding, norm_path, os_path_dirname, os_path_isfile, os_path_isdir, os_path_join, os_path_splitext,
+    read_file, write_file)
+from ae.system import APP_BUILD_CFG_FILENAME
 from ae.paths import PATH_PLACEHOLDERS, placeholder_path, coll_folders, Collector
+
 # noinspection PyProtectedMember
 from ae.core import (
     APP_KEY_SEP, DEBUG_LEVELS, DEBUG_LEVEL_DISABLED, DEBUG_LEVEL_ENABLED, DEBUG_LEVEL_VERBOSE,
     LOG_FILE_IDX_WIDTH, MAX_NUM_LOG_FILES,
-    activate_multi_threading, _deactivate_multi_threading, hide_dup_line_prefix, main_app_instance, print_out,
-    debug_out, verbose_out, is_debug, is_verbose, registered_app_names,
-    temp_context_cleanup, temp_context_folders, temp_context_get_or_create, _temp_folders,
+    activate_multi_threading, _deactivate_multi_threading, debug_out, hide_dup_line_prefix, is_debug, is_verbose,
+    _join_app_threads, main_app_instance, print_out, registered_app_names,
+    temp_context_cleanup, temp_context_folders, temp_context_get_or_create, _temp_folders, verbose_out,
     AppBase, _PrintingReplicator)
 
 
 __version__ = '3.6.9dev-test'   # used for automatic app version find tests
 
 
-class TestCoreHelpers:
+class TestHelpers:
     def test_debug_out(self, capsys, restore_app_env):
         app = AppBase()
         app.debug_level = DEBUG_LEVEL_VERBOSE
@@ -124,7 +129,7 @@ class TestCoreHelpers:
         assert us in out
         assert us in err
 
-    def test_print_out_cov(self, capsys):
+    def test_print_out_err_cov(self, capsys):
         # print invalid/surrogate code point/char to force UnicodeEncodeError exception in print_out() (test coverage)
         us = chr(0xD801)
         print_out(us, 123456, encode_errors_def='strict')      # .. also coverage of not-str args
@@ -134,6 +139,16 @@ class TestCoreHelpers:
         print_out('\r', 123456)     # coverage of processing output (not captured by pytest)
         out, err = capsys.readouterr()
         assert out == '' and err == ''
+
+    def test_print_out_exception_cov(self, capsys):     # PyCharm-debugging doesn't work?!?!?
+        with (patch('builtins.map', side_effect=ValueError("tst_value_err_exception")),
+              patch('traceback.print_exc') as mock_print_exc):
+            print_out('tst_exception_print_out')
+
+        mock_print_exc.assert_called_once()
+        out, err = capsys.readouterr()
+        assert '...... in ae.core.print_out' in out
+        assert 'tst_exception_print_out' in out
 
     def test_registered_app_names_empty(self):
         assert not registered_app_names()
@@ -171,6 +186,122 @@ class TestCoreHelpers:
         assert 'tst console output' not in out
         assert out == ""
         assert err == ""
+
+
+class TestJoinAppThreads:
+    @pytest.fixture
+    def main_thread(self):
+        return threading.current_thread()
+
+    def test_no_app_threads(self, main_thread):
+        """ empty _APP_THREADS -> loop body never runs, deactivation still happens. """
+        with patch('ae.core._APP_THREADS', {}), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core._deactivate_multi_threading') as deactivate_mock:
+            _join_app_threads()
+
+        deactivate_mock.assert_called_once()
+
+    def test_skips_main_thread(self, main_thread):
+        """ the main thread itself must be neither joined nor popped. """
+        app_threads = {1: main_thread}
+        with patch('ae.core._APP_THREADS', app_threads), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core.print_out') as print_out_mock, \
+                patch('ae.core._deactivate_multi_threading') as deactivate_mock:
+            _join_app_threads()
+
+        print_out_mock.assert_not_called()
+        assert app_threads == {1: main_thread}  # untouched
+        deactivate_mock.assert_called_once()
+
+    def test_joins_and_pops_thread_with_ident(self, main_thread):
+        """ non-main thread with a resolved ident: joined, logged and removed from _APP_THREADS. """
+        worker = MagicMock(spec=threading.Thread)
+        worker.ident = 42
+        worker.name = "worker"
+        app_threads = {42: worker}
+
+        with patch('ae.core._APP_THREADS', app_threads), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core.print_out') as print_out_mock, \
+                patch('ae.core._LOGGER', "logger_sentinel"), \
+                patch('ae.core._deactivate_multi_threading') as deactivate_mock:
+            _join_app_threads(timeout=5.0)
+
+        worker.join.assert_called_once_with(5.0)
+        print_out_mock.assert_called_once()
+        args, kwargs = print_out_mock.call_args
+        assert "42" in args[0] or "42" in str(args[0])
+        assert "worker" in args[0]
+        assert kwargs.get('logger') == "logger_sentinel"
+        assert 42 not in app_threads
+        deactivate_mock.assert_called_once()
+
+    def test_joins_but_does_not_pop_thread_without_ident(self, main_thread):
+        """ ident becomes None (e.g. thread already finished/cleaned up) -> join still happens, no pop. """
+        worker = MagicMock(spec=threading.Thread)
+        worker.ident = None
+        worker.name = "ghost"
+        app_threads = {99: worker}
+
+        with patch('ae.core._APP_THREADS', app_threads), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core.print_out'), \
+                patch('ae.core._deactivate_multi_threading') as deactivate_mock:
+            _join_app_threads()
+
+        worker.join.assert_called_once_with(None)
+        assert app_threads == {99: worker}  # not popped, since ident is None
+        deactivate_mock.assert_called_once()
+
+    def test_default_timeout_is_none(self, main_thread):
+        """ calling without a timeout argument must join with timeout=None (blocking). """
+        worker = MagicMock(spec=threading.Thread)
+        worker.ident = 7
+        worker.name = "worker"
+        app_threads = {7: worker}
+
+        with patch('ae.core._APP_THREADS', app_threads), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core.print_out'), \
+                patch('ae.core._deactivate_multi_threading'):
+            _join_app_threads()
+
+        worker.join.assert_called_once_with(None)
+
+    def test_iterates_in_reverse_insertion_order(self, main_thread):
+        """ threads must be joined in reverse of _APP_THREADS insertion order. """
+        worker1 = MagicMock(spec=threading.Thread, ident=1, name="w1")
+        worker2 = MagicMock(spec=threading.Thread, ident=2, name="w2")
+        app_threads = {1: worker1, 2: worker2}
+        join_order = []
+        worker1.join.side_effect = lambda timeout: join_order.append(1)
+        worker2.join.side_effect = lambda timeout: join_order.append(2)
+
+        with patch('ae.core._APP_THREADS', app_threads), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core.print_out'), \
+                patch('ae.core._deactivate_multi_threading'):
+            _join_app_threads()
+
+        assert join_order == [2, 1]
+        assert app_threads == {}
+
+    def test_mixed_main_and_worker_threads(self, main_thread):
+        """ a dict containing both the main thread and a worker: only the worker gets joined/popped. """
+        worker = MagicMock(spec=threading.Thread, ident=5, name="worker")
+        app_threads = {1: main_thread, 5: worker}
+
+        with patch('ae.core._APP_THREADS', app_threads), \
+                patch('ae.core.threading.current_thread', return_value=main_thread), \
+                patch('ae.core.print_out'), \
+                patch('ae.core._deactivate_multi_threading') as deactivate_mock:
+            _join_app_threads()
+
+        worker.join.assert_called_once_with(None)
+        assert app_threads == {1: main_thread}  # main thread stays, worker popped
+        deactivate_mock.assert_called_once()
 
 
 class TestPrintingReplicator:
@@ -405,7 +536,7 @@ class TestAeLogging:
             sub_thread = threading.Thread(target=sub_app_po)
             sub_thread.start()
             while not sub_printed:      # NOT ENOUGH fails on gitlab CI: not sub or not sub.active_log_stream:
-                pass                    # wait until the sub-thread has called init_logging()  # pragma: no cover
+                pass                    # wait until the sub-thread has called init_logging()
             print_out(mp + tst_out + "_1")
             app.po(mp + tst_out + "_2")
             sub.init_logging()          # close the sub-app log file created by sub_thread
@@ -430,6 +561,16 @@ class TestAeLogging:
         # cause/provoke _append_eof_and_flush_file() exceptions for coverage by passing any other non-stream object
         # noinspection PyInvalidCast
         app._append_eof_and_flush_file(cast(TextIO, None), 'invalid stream')
+
+    def test_exception_log_file_flush_print(self, restore_app_env):
+        app = AppBase('test_exception_log_file_flush_print')
+        app.po = MagicMock()
+
+        with (patch('builtins.print', side_effect=Exception('tst_print_exception')),
+              patch('traceback.print_exc')):
+            app._append_eof_and_flush_file(TextIO(), 'mocked stream')
+
+        assert 'end-of-file marker exception' in app.po.call_args[0][0]
 
     def test_app_instances_reset2(self):
         assert main_app_instance() is None
@@ -650,6 +791,13 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert app.app_version == ver
         assert app.app_path == norm_path(os_path_dirname(sys.argv[0]))
 
+    def test_app_cwd(self, capsys, restore_app_env, tmp_path):
+        with patch('ae.core.os.getcwd'):
+            AppBase()
+
+        out, err = capsys.readouterr()
+        assert 'upgrade check skipped' in out
+
     def test_app_find_version(self, restore_app_env):
         app = AppBase()
         assert app.app_version == __version__
@@ -730,7 +878,8 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert PATH_PLACEHOLDERS is ae.paths.PATH_PLACEHOLDERS
 
         tst_path_placeholders = ae.paths.PATH_PLACEHOLDERS.copy()
-        with patch('ae.core.PATH_PLACEHOLDERS', tst_path_placeholders):
+        with (patch('ae.core.PATH_PLACEHOLDERS', tst_path_placeholders),
+              patch('ae.core.os_platform', 'android')):
             assert cae.app_name == 'pyTstConsAppKey'
             assert ae.core.PATH_PLACEHOLDERS['app_name'] == 'pyTstConsAppKey'
             assert ae.core.PATH_PLACEHOLDERS['main_app_name'] == 'pyTstConsAppKey'
@@ -741,6 +890,8 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
             assert ae.core.PATH_PLACEHOLDERS['app_name'] == new_app_name
             assert ae.core.PATH_PLACEHOLDERS['main_app_name'] == new_app_name
             cae.app_name = 'pyTstConsAppKey'
+
+            assert 'apk_ext' in ae.core.PATH_PLACEHOLDERS
 
     def test_init_path_placeholders_read_err(self, restore_app_env):
         cae = AppBase("test_init_path_placeholders_read_err")
@@ -865,16 +1016,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert 'AppBase.shutdown() error-message' in out
         assert err == ""
 
-    def test_shutdown_none(self, capsys, restore_app_env):
-        app = AppBase(debug_level=DEBUG_LEVEL_DISABLED)
-
-        app.shutdown(None)
-
-        out, err = capsys.readouterr()
-        assert out == ""
-        assert err == ""
-
-    def test_shutdown_0(self, capsys, restore_app_env):
+    def test_shutdown_exit_code_0(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
 
         with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
@@ -884,7 +1026,7 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
         assert 'shutdown of ' in out
         assert err == ""
 
-    def test_shutdown_1(self, capsys, restore_app_env):
+    def test_shutdown_exit_code_1(self, capsys, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_VERBOSE)
 
         with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
@@ -892,13 +1034,85 @@ class TestAppBase:      # only some basic tests - test coverage is done by :clas
 
         assert 'shutdown of ' in capsys.readouterr()[0]
 
-    def test_shutdown_123456(self, capsys, restore_app_env):
+    def test_shutdown_exit_code_123456(self, capsys, restore_app_env):
         app = AppBase()
 
         with patch('ae.core.sys.exit', lambda *args, **kwargs: None):
             app.shutdown(123456)    # test warning if exit code is not in 0..255
 
         assert 'extended exit code' in capsys.readouterr()[0]
+
+    def test_shutdown_exit_code_none(self, capsys, restore_app_env):
+        app = AppBase(debug_level=DEBUG_LEVEL_DISABLED)
+
+        app.shutdown(None)
+
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert err == ""
+
+    def test_shutdown_got_shut_down(self, capsys, restore_app_env):
+        app = AppBase()
+        app._got_shut_down = True
+        capsys.readouterr()
+
+        app.shutdown(None)
+
+        out, err = capsys.readouterr()
+        assert out == ""
+        assert err == ""
+
+    def test_shutdown_join_app_threads(self, capsys, restore_app_env):
+        app = AppBase(multi_threading=True)
+        sub_thread = threading.Thread(target=partial(AppBase, sys_env_id='tst sub app id'))
+        sub_thread.start()
+        sub_thread.join()
+
+        app.shutdown(None)
+
+        out, err = capsys.readouterr()
+        assert '  **  joining thread id ' in out
+        assert err == ""
+
+    def test_shutdown_logging(self, restore_app_env):
+        app = AppBase()
+        app.py_log_params = {'tst_param': 'tst_log_param_value'}
+
+        with patch('ae.core.logging.shutdown') as mock_log_shutdown:
+            app.shutdown(None)
+
+        mock_log_shutdown.assert_called()
+
+    def test_shutdown_nul_std_out(self, restore_app_env):
+        app = AppBase()
+        mock_nul_out = MagicMock()
+        mock_nul_out.closed = False
+        app._nul_std_out = mock_nul_out
+
+        with patch.object(app, '_append_eof_and_flush_file') as mock_flush:
+            app.shutdown(None)
+
+        mock_flush.assert_called_once_with(mock_nul_out, "NUL stdout")
+        assert mock_nul_out.close.called
+
+    def test_shutdown_rename_log_file(self, restore_app_env):
+        app = AppBase()
+        app._log_file_index += 1
+
+        with patch.object(app, '_rename_log_file') as mock_ren_log:
+            app.shutdown(None)
+
+        mock_ren_log.assert_called_once()
+
+    def test_shutdown_sub_app(self, capsys, restore_app_env):
+        app = AppBase()
+        _sub_app = AppBase(sys_env_id='sub app id')
+
+        app.shutdown(None, error_message='AppBase.shutdown() w/ sub app error-message')
+
+        out, err = capsys.readouterr()
+        assert 'AppBase.shutdown() w/ sub app error-message' in out
+        assert err == ""
 
     def test_shutdown_temp_context(self, restore_app_env):
         app = AppBase(debug_level=DEBUG_LEVEL_ENABLED)
@@ -997,3 +1211,55 @@ class TestTempContextDirectories:
 
         assert not os_path_isdir(path)
         assert not os_path_isdir(path2)
+
+
+class TestCoreModuleLoad:
+    """ this test class has to be at the end (after TestappBase), else test_shutdown_temp_context() fails """
+    @pytest.fixture(autouse=True)
+    def reset_module(self):
+        yield
+        importlib.reload(ae.core)
+
+    def test_init_from_app_cfg_file(self, monkeypatch, tmp_path):
+        prj_root = str(tmp_path)
+        section = 'app'
+        write_file(os_path_join(prj_root, APP_BUILD_CFG_FILENAME),
+                   f"[{section}]\n" +
+                   'package.name' + "=" + 'tst_pkg_name' + "\n" +
+                   'package.domain' + "=" + 'tst_pkg_domain' + "\n" +
+                   'android.permissions' + "=" + 'tst_android_per' + "\n"
+                   )
+        monkeypatch.chdir(prj_root)
+        importlib.reload(ae.core)
+
+        assert ae.core.PACKAGE_NAME == 'tst_pkg_name'
+        assert ae.core.PACKAGE_DOMAIN == 'tst_pkg_domain'
+        assert ae.core.PERMISSIONS == 'tst_android_per'
+
+    def test_init_from_app_cfg_file_defaults(self, monkeypatch, tmp_path):
+        prj_root = str(tmp_path)
+        write_file(os_path_join(prj_root, APP_BUILD_CFG_FILENAME), "")
+        monkeypatch.chdir(prj_root)
+        with patch('ae.system.stack_var', return_value=""):
+            importlib.reload(ae.core)
+            pass
+
+        assert ae.core.PACKAGE_NAME == 'unspecified_package'
+        assert ae.core.PACKAGE_DOMAIN == 'org.test'
+        assert (ae.core.PERMISSIONS ==
+                'INTERNET,VIBRATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE')
+
+    def test_init_for_android(self):
+        with (patch('ae.system.os_platform', 'android'),
+              patch('ae.core.os_path_basename', return_value=PY_INIT),
+              patch('ae.base.extend_file') as mock_extend,
+              patch('ae.core.importlib.import_module') as mock_import):
+            importlib.reload(ae.core)
+
+            service_instance_start = mock_import.return_value.autoclass.return_value.start
+            activity = mock_import.return_value.autoclass.return_value.mActivity
+            ae.core.start_app_service("tst_app_service")
+
+        mock_extend.assert_called_once_with('importlib' + '_debug.log',  # stack_var('__file__') from importlib.reload()
+                                            f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n")
+        service_instance_start.assert_called_once_with(activity, 'tst_app_service')
