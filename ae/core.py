@@ -25,8 +25,8 @@ is providing a mapping between the debug levels and the python logging levels.
 
 the encoding of strings into byte-strings (to output them to the console/stdout or to file contents) can be tricky
 sometimes. to not lose any logging output because of invalid characters, this module will automatically handle any
-:exc:`UnicodeEncodeError` exception for you. invalid characters will then automatically be converted to the default
-encoding (specified by :data:`~ae.base.DEF_ENCODING`) with the default error handling method specified by
+:exc:`UnicodeEncodeError` exception for you. invalid characters will then automatically be converted to the 'ascii'
+encoding (see :func:`~ae.base.force_encoding`) with the default error handling method specified by
 :data:`~ae.base.DEF_ENCODE_ERRORS` (both defined in the :mod:`ae.base` namespace portion/module).
 
 the constants :data:`PACKAGE_NAME`, :data:`PACKAGE_DOMAIN` and :data:`PERMISSIONS` are mainly used for
@@ -243,6 +243,7 @@ from __future__ import annotations  # allow type forward references (PEP 563), c
 
 import datetime
 import faulthandler
+import importlib
 import logging
 import logging.config
 import os
@@ -258,7 +259,7 @@ from io import StringIO
 from typing import Any, TextIO, cast
 
 from ae.base import (                                                                                   # type: ignore
-    DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN,
+    DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN, URI_SVC_SEP,
     defuse, dummy_function, extend_file, force_encoding, norm_path,
     os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext,
     read_file, to_ascii, write_file)
@@ -270,19 +271,19 @@ from ae.paths import (                                                          
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.88'
+__version__ = '0.3.89'
 
 
 # package and permissions handling defaults for all platforms and frameworks
 PACKAGE_NAME = stack_var('__name__') or 'unspecified_package'                       #: package name default
 PACKAGE_DOMAIN = 'org.test'                                                         #: package domain default
-PERMISSIONS = "INTERNET,VIBRATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE"
-if os_path_isfile(APP_BUILD_CFG_FILENAME):                           # pragma: no cover
+PERMISSIONS = 'INTERNET,VIBRATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE'
+if os_path_isfile(APP_BUILD_CFG_FILENAME):
     PACKAGE_NAME, PACKAGE_DOMAIN, PERMISSIONS = build_config_variable_values(
         ('package.name', PACKAGE_NAME),
         ('package.domain', PACKAGE_DOMAIN),
         ('android.permissions', PERMISSIONS))
-elif os_platform == 'android':                                  # pragma: no cover
+elif os_platform == 'android':
     _importing_main_name = norm_path(stack_var('__file__') or 'incomplete_main_file' + PY_EXT)
     if os_path_basename(_importing_main_name) in (PY_INIT, PY_MAIN):
         _importing_main_name = os_path_dirname(_importing_main_name)
@@ -290,17 +291,17 @@ elif os_platform == 'android':                                  # pragma: no cov
     extend_file(f'{_importing_package}_debug.log', f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n")
 
 
-if os_platform == 'android':  # pragma: no cover
+if os_platform == 'android':
     # import permissions module from python-for-android (recipes/android/src/android/permissions.py)
-    # noinspection PyUnresolvedReferences
-    from android.permissions import request_permissions, Permission     # type: ignore # pylint: disable=import-error
-    from jnius import autoclass                                         # type: ignore
+    _ap = importlib.import_module('android.permissions')  # from android.permissions ... request_permissions, Permission
+    request_permissions, Permission = _ap.request_permissions, _ap.Permission
+    autoclass = importlib.import_module('jnius').autoclass     # from jnius import autoclass
 
-    def request_app_permissions(callback: Callable[[list[Permission], list[bool]], None] | None = None):
+    def request_app_permissions(callback: Callable[[list[Any], list[bool]], None] | None = None):
         """ request app/service permissions on Android OS.
 
         :param callback:        optional callback receiving two list arguments with identical length,
-                                the 1st with the requested permissions and
+                                the 1st with requested permissions (each of :class:`android.permissions.Permission`) and
                                 the 2nd with booleans stating if the permission got granted (True) or rejected (False).
         """
         permissions = []
@@ -512,7 +513,7 @@ def print_out(*objects, sep: str = " ", end: str = '\n', file: TextIO | None = N
                 fixed_objects.append(obj)
             objects = tuple(fixed_objects)
             retries -= 1
-        except (IOError, OSError, ValueError, Exception):   # pragma: no cover # pylint: disable=broad-except
+        except (IOError, OSError, ValueError, Exception):   # pylint: disable=broad-except
             traceback.print_exc()
             print("...... in ae.core.print_out(", objects, ")")
             break
@@ -640,7 +641,7 @@ def _shut_down_sub_app_instances(timeout: float | None = None):
     try:
         for app in reversed(list(_APP_INSTANCES.values())):  # list() because the weak ref dict gets changed in the loop
             if not app.is_main_app:
-                app.shutdown(timeout=timeout)                                   # pragma: no cover
+                app.shutdown(timeout=timeout)
     finally:
         if blocked:
             app_inst_lock.release()
@@ -706,7 +707,7 @@ def _register_app_thread():
         _APP_THREADS[tid] = threading.current_thread()
 
 
-def _join_app_threads(timeout: float | None = None):                             # pragma: no cover
+def _join_app_threads(timeout: float | None = None):
     """ join/finish all app threads and finally deactivate multi-threading.
 
     :param timeout:             timeout float value in seconds for thread joining (def=None - block/no-timeout).
@@ -716,7 +717,7 @@ def _join_app_threads(timeout: float | None = None):                            
     main_thread = threading.current_thread()
     for app_thread in reversed(list(_APP_THREADS.values())):    # threading.enumerate() includes PyCharm/pytest threads
         if app_thread is not main_thread:
-            print_out(f"  **  joining thread id <{app_thread.ident: >6}> name={app_thread.name}", logger=_LOGGER)
+            print_out(f"  **  joining thread id <{app_thread.ident or '?id?': >6}> {app_thread.name=}", logger=_LOGGER)
             app_thread.join(timeout)
             if app_thread.ident is not None:     # mypy needs it because ident is optional, but PyCharm is too silly
                 # noinspection PyTypeChecker
@@ -819,10 +820,10 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             self._init_path_placeholders()              # .. then init PATH_PLACEHOLDERS
 
             app_path, cwd_path = norm_path(app_path), norm_path(os.getcwd())
-            if app_path == cwd_path:                    # if this app is not a dev-tool/pjm # pragma: no cover
+            if app_path == cwd_path:                    # if this app is not a dev-tool/pjm
                 destination_files = check_all()         # then prepare the app on first-run after install/ubgrade
                 self.vpo(f"AppBase.__init__() updated {len(destination_files)} {destination_files=}")
-            else:                                                                           # pragma: no cover
+            else:
                 self.vpo(f"AppBase.__init__() upgrade check skipped because {app_path=} != {cwd_path=}")
 
     def _init_path_placeholders(self):  # pylint: disable=too-many-locals
@@ -837,7 +838,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         # to unmask in :meth:`ae.core.AppBase.__init__`/:meth:`ae.updater.check_all` the masked .apk extension of the
         # APK, embedded via pjm-build_gui_app action, because buildozer/p4a does not embed it having an .apk extension
         if os_platform == 'android':    # only needed for APKs on Android OS; not needed for AAR app packages
-            PATH_PLACEHOLDERS['apk_ext'] = 'apk'                                            # pragma: no cover
+            PATH_PLACEHOLDERS['apk_ext'] = 'apk'
 
         # check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}; to be
         # corrected/redirected to subfolder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
@@ -848,7 +849,8 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             cph_path = normalize('{' + placeholder + '}')
             cph_exists = os_path_isdir(cph_path)
             chk_path = os_path_join(cph_path, f"{name}_dir")
-            chk_file = os_path_join(chk_path, f"{name}_file_{defuse('svc://chk_usr:chk_pw@chk_host/chk_path')}")
+            chk_suffix = defuse(f"svc{URI_SVC_SEP}chk_usr:chk_pw@chk_host/chk_path")
+            chk_file = os_path_join(chk_path, f"{name}_file_{chk_suffix}")
             err_msg = f"{chk_path=}"
             access = False
             try:
@@ -863,7 +865,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                     aph_path = normalize('{' + alternative + '}')
                     aph_exists = os_path_isdir(aph_path)
                     alt_path = os_path_join(aph_path, app_name + "_" + placeholder)
-                    alt_file = os_path_join(alt_path, f"{name}_file_{defuse('svc://chk_usr:chk_pw@chk_host/chk_path')}")
+                    alt_file = os_path_join(alt_path, f"{name}_file_{chk_suffix}")
                     try:
                         write_file(alt_file, file_content, make_dirs=True)
                         assert os_path_isfile(alt_file)
@@ -1051,7 +1053,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 self._std_out_err_redirection(True)
                 self._flush_and_close_log_buf()
                 new_stream = self._log_file_stream
-            elif self.suppress_stdout and not self._nul_std_out:    # pragma: no cover/_std_out_err_redirection does it
+            elif self.suppress_stdout and not self._nul_std_out:    # _std_out_err_redirection does it
                 old_stream = sys.stdout
                 # pylint: disable-next=unspecified-encoding, consider-using-with
                 sys.stdout = self._nul_std_out = new_stream = open(os.devnull, 'w')
@@ -1134,7 +1136,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 self.po(f"  ### extended exit code {exit_code}! most shells only get 8 bits(0..255)=={exit_code % 256}")
             self.po(f"##### {'forced ' if force else ''}shutdown of {self.app_name} with {exit_code=}", logger=_LOGGER)
 
-        if self._got_shut_down:                                                 # pragma: no cover
+        if self._got_shut_down:
             return  # needed for unit test runs where sys.exit() got patched or caught via pytest.raises(SystemExit)
         self._got_shut_down = True
 
@@ -1145,23 +1147,23 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         if is_main_app_instance:
             _shut_down_sub_app_instances(timeout=timeout)
             if _multi_threading_activated:
-                _join_app_threads(timeout=timeout)                              # pragma: no cover
+                _join_app_threads(timeout=timeout)
 
         log_lock = (False if force else log_file_lock.acquire(**aqc_kwargs))    # pylint: disable=consider-using-with
 
         self._flush_and_close_log_buf()
         self._close_log_file()
         if self._log_file_index:
-            self._rename_log_file()                                             # pragma: no cover
+            self._rename_log_file()
 
-        if self._nul_std_out:                                                   # pragma: no cover
+        if self._nul_std_out:
             if not self._nul_std_out.closed:
                 self._append_eof_and_flush_file(self._nul_std_out, "NUL stdout")
                 self._nul_std_out.close()
             self._nul_std_out = None
 
         if self.py_log_params:
-            logging.shutdown()                                                  # pragma: no cover
+            logging.shutdown()
 
         self._std_out_err_redirection(False)
 
@@ -1178,7 +1180,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 for context in list(_temp_folders):
                     temp_context_cleanup(context)
 
-            if exit_code is not None:           # pragma: no cover (would break/cancel test run)
+            if exit_code is not None:
                 sys.exit(exit_code)
 
     def _std_out_err_redirection(self, redirect: bool):
@@ -1196,7 +1198,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 else:
                     # pylint: disable-next=unspecified-encoding, consider-using-with
                     std_out = self._nul_std_out = open(os.devnull, 'w')
-                # noinspection PyInvalidCast
+                # noinspection PyInvalidCast,PyTypeChecker
                 sys.stdout = cast(TextIO, _PrintingReplicator(sys_out_obj=std_out))
                 # noinspection PyInvalidCast
                 sys.stderr = cast(TextIO, _PrintingReplicator(sys_out_obj=ori_std_err))
@@ -1209,7 +1211,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             if redirect:
                 faulthandler.enable(file=sys.stdout.fileno())
             elif faulthandler.is_enabled():
-                faulthandler.disable()  # pragma: no cover (badly testable - would cancel/break test runs)
+                faulthandler.disable()
 
     def _append_eof_and_flush_file(self, stream_file: TextIO, stream_name: str):
         """ add a special end-of-file marker in debug mode and flush the internal buffers to the file stream.
@@ -1225,7 +1227,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                 if self.debug:
                     # noinspection PyTypeChecker
                     print('EoF', file=stream_file)
-            except Exception as ex:     # pragma: no cover - pylint: disable=broad-except
+            except Exception as ex:     # pylint: disable=broad-except
                 self.po(f"Ignorable {stream_name} end-of-file marker exception={ex}", logger=_LOGGER)
 
             stream_file.flush()
