@@ -18,10 +18,9 @@ import ae.paths                 # for patch tests of ae.paths.PATH_PLACEHOLDERS
 import ae.core                  # for patch tests of ae.core.PATH_PLACEHOLDERS
 
 from ae.base import (
-    DATE_TIME_ISO, PY_INIT,
+    DATE_TIME_ISO,
     force_encoding, norm_path, os_path_dirname, os_path_isfile, os_path_isdir, os_path_join, os_path_splitext,
     read_file, write_file)
-from ae.system import APP_BUILD_CFG_FILENAME
 from ae.paths import PATH_PLACEHOLDERS, placeholder_path, coll_folders, Collector
 
 # noinspection PyProtectedMember
@@ -1223,7 +1222,7 @@ class TestCoreModuleLoad:
     def test_init_from_app_cfg_file(self, monkeypatch, tmp_path):
         prj_root = str(tmp_path)
         section = 'app'
-        write_file(os_path_join(prj_root, APP_BUILD_CFG_FILENAME),
+        write_file(os_path_join(prj_root, 'buildozer.spec'),
                    f"[{section}]\n" +
                    'package.name' + "=" + 'tst_pkg_name' + "\n" +
                    'package.domain' + "=" + 'tst_pkg_domain' + "\n" +
@@ -1238,7 +1237,7 @@ class TestCoreModuleLoad:
 
     def test_init_from_app_cfg_file_defaults(self, monkeypatch, tmp_path):
         prj_root = str(tmp_path)
-        write_file(os_path_join(prj_root, APP_BUILD_CFG_FILENAME), "")
+        write_file(os_path_join(prj_root, 'buildozer.spec'), "")
         monkeypatch.chdir(prj_root)
         with patch('ae.system.stack_var', return_value=""):
             importlib.reload(ae.core)
@@ -1251,7 +1250,7 @@ class TestCoreModuleLoad:
 
     def test_init_for_android(self):
         with (patch('ae.system.os_platform', 'android'),
-              patch('ae.core.os_path_basename', return_value=PY_INIT),
+              patch('ae.core.os_path_basename', return_value='__init__' + '.py'),
               patch('ae.base.extend_file') as mock_extend,
               patch('ae.core.importlib.import_module') as mock_import):
             importlib.reload(ae.core)
@@ -1261,5 +1260,5 @@ class TestCoreModuleLoad:
             ae.core.start_app_service("tst_app_service")
 
         mock_extend.assert_called_once_with('importlib' + '_debug.log',  # stack_var('__file__') from importlib.reload()
-                                            f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n")
+                                            f"no {'buildozer.spec'} found/using defaults\n")
         service_instance_start.assert_called_once_with(activity, 'tst_app_service')

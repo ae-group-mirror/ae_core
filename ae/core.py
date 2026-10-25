@@ -31,7 +31,7 @@ encoding (see :func:`~ae.base.force_encoding`) with the default error handling m
 
 the constants :data:`PACKAGE_NAME`, :data:`PACKAGE_DOMAIN` and :data:`PERMISSIONS` are mainly used for
 apps running on mobile devices (Android or iOS). to avoid redundancies, these values get loaded and registered
-from the :data:`build config file <ae.system.APP_BUILD_CFG_FILENAME>` - if it exists in the current working directory.
+from the build config file 'buildozer.spec' - if it exists in the current working directory.
 
 
 core helper functions
@@ -199,7 +199,7 @@ import the respective :ref:`debug level constant <debug-level-constants>`.
 to set the initial debug level to less verbose output, you could specify at instantiation of your :class:`AppBase` class
 the :data:`DEBUG_LEVEL_ENABLED` constant onto the :paramref:`~AppBase.debug_level` argument::
 
-    app = AppBase(..., debug_level= :data:`DEBUG_LEVEL_ENABLED`)
+    app = AppBase(debug_level=:data:`DEBUG_LEVEL_ENABLED`)
 
 by passing :data:`DEBUG_LEVEL_DISABLED` constant all debug print-outs will be disabled.
 
@@ -259,36 +259,35 @@ from io import StringIO
 from typing import Any, TextIO, cast
 
 from ae.base import (                                                                                   # type: ignore
-    DATE_TIME_ISO, DEF_ENCODE_ERRORS, PY_EXT, PY_INIT, PY_MAIN, URI_SVC_SEP,
+    DATE_TIME_ISO, DEF_ENCODE_ERRORS,
     defuse, dummy_function, extend_file, force_encoding, norm_path,
     os_path_basename, os_path_dirname, os_path_isdir, os_path_isfile, os_path_join, os_path_splitext,
     read_file, to_ascii, write_file)
 from ae.system import (                                                                                 # type: ignore
-    APP_BUILD_CFG_FILENAME,
     app_name_guess, build_config_variable_values, os_platform, stack_var)
 from ae.paths import (                                                                                  # type: ignore
     PATH_PLACEHOLDERS, add_common_storage_paths, app_data_path, app_docs_path, normalize)
 from ae.updater import check_all                                                                        # type: ignore
 
 
-__version__ = '0.3.89'
+__version__ = '0.3.90'
 
 
 # package and permissions handling defaults for all platforms and frameworks
 PACKAGE_NAME = stack_var('__name__') or 'unspecified_package'                       #: package name default
 PACKAGE_DOMAIN = 'org.test'                                                         #: package domain default
 PERMISSIONS = 'INTERNET,VIBRATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE'
-if os_path_isfile(APP_BUILD_CFG_FILENAME):
+if os_path_isfile('buildozer.spec'):
     PACKAGE_NAME, PACKAGE_DOMAIN, PERMISSIONS = build_config_variable_values(
         ('package.name', PACKAGE_NAME),
         ('package.domain', PACKAGE_DOMAIN),
         ('android.permissions', PERMISSIONS))
 elif os_platform == 'android':
-    _importing_main_name = norm_path(stack_var('__file__') or 'incomplete_main_file' + PY_EXT)
-    if os_path_basename(_importing_main_name) in (PY_INIT, PY_MAIN):
+    _importing_main_name = norm_path(stack_var('__file__') or 'incomplete_main_file' + '.py')
+    if os_path_basename(_importing_main_name) in ('__init__' + '.py', '__main__' + '.py'):
         _importing_main_name = os_path_dirname(_importing_main_name)
     _importing_package = os_path_splitext(os_path_basename(_importing_main_name))[0]
-    extend_file(f'{_importing_package}_debug.log', f"no {APP_BUILD_CFG_FILENAME} found/using defaults\n")
+    extend_file(f'{_importing_package}_debug.log', f"no {'buildozer.spec'} found/using defaults\n")
 
 
 if os_platform == 'android':
@@ -816,8 +815,8 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
         _register_app_thread()
         register_app_instance(self)
 
-        if self.is_main_app:                            # if this instance is the main/first app instance
-            self._init_path_placeholders()              # .. then init PATH_PLACEHOLDERS
+        if self.is_main_app:                            # if main/first app instance then init PATH_PLACEHOLDERS
+            self._init_path_placeholders()              # and check/correct them on restricted file system write access
 
             app_path, cwd_path = norm_path(app_path), norm_path(os.getcwd())
             if app_path == cwd_path:                    # if this app is not a dev-tool/pjm
@@ -826,10 +825,10 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
             else:
                 self.vpo(f"AppBase.__init__() upgrade check skipped because {app_path=} != {cwd_path=}")
 
-    def _init_path_placeholders(self):  # pylint: disable=too-many-locals
-        """ correct app_name/main_app_name, the related path placeholders and ensure write access for some of them. """
+    def _init_path_placeholders(self):
+        """ extend and correct path placeholders and ensure write access for some of them. """
         # correct app name guess, init by :mod:`ae.paths` (main app from ("", 'pyTstConsAppKey', '_jb_pytest_runner'))
-        PATH_PLACEHOLDERS['main_app_name'] = PATH_PLACEHOLDERS['app_name'] = app_name = self.app_name
+        PATH_PLACEHOLDERS['main_app_name'] = PATH_PLACEHOLDERS['app_name'] = self.app_name
         PATH_PLACEHOLDERS['app'] = app_data_path()
         PATH_PLACEHOLDERS['ado'] = app_docs_path()
 
@@ -837,19 +836,24 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
 
         # to unmask in :meth:`ae.core.AppBase.__init__`/:meth:`ae.updater.check_all` the masked .apk extension of the
         # APK, embedded via pjm-build_gui_app action, because buildozer/p4a does not embed it having an .apk extension
-        if os_platform == 'android':    # only needed for APKs on Android OS; not needed for AAR app packages
+        if os_platform == 'android':  # only needed for APKs on Android OS; not needed for AAR app packages
             PATH_PLACEHOLDERS['apk_ext'] = 'apk'
 
-        # check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}; to be
-        # corrected/redirected to subfolder of {videos}, {pictures}, {usr}, especially if os_platform=='android'
-        # version > 12 / API-level > 33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help)
+        self._path_placeholders_corrections()
+
+    def _path_placeholders_corrections(self):
+        """ check folder/file write access for placeholders {ado}, {doc}, {documents}, and {downloads}
+
+        correct/redirect paths to subfolders of {videos}, {pictures}, {usr}, especially if os_platform=='android'
+        version > 12 / API-level > 33 (adding the android app permission MANAGE_EXTERNAL_STORAGE did not help).
+        """
         file_content = "check right file content"
         for placeholder in [_ for _ in ('ado', 'doc', 'documents', 'downloads') if _ in PATH_PLACEHOLDERS]:
             name = f'check_write_access_on_{placeholder}'
             cph_path = normalize('{' + placeholder + '}')
             cph_exists = os_path_isdir(cph_path)
             chk_path = os_path_join(cph_path, f"{name}_dir")
-            chk_suffix = defuse(f"svc{URI_SVC_SEP}chk_usr:chk_pw@chk_host/chk_path")
+            chk_suffix = defuse("svc://chk_usr:chk_pw@chk_host/chk_path")
             chk_file = os_path_join(chk_path, f"{name}_file_{chk_suffix}")
             err_msg = f"{chk_path=}"
             access = False
@@ -864,7 +868,7 @@ class AppBase:  # pylint: disable=too-many-instance-attributes
                                     if _ != placeholder and _ in PATH_PLACEHOLDERS]:
                     aph_path = normalize('{' + alternative + '}')
                     aph_exists = os_path_isdir(aph_path)
-                    alt_path = os_path_join(aph_path, app_name + "_" + placeholder)
+                    alt_path = os_path_join(aph_path, self.app_name + "_" + placeholder)
                     alt_file = os_path_join(alt_path, f"{name}_file_{chk_suffix}")
                     try:
                         write_file(alt_file, file_content, make_dirs=True)
